@@ -5,15 +5,25 @@ import { uiText } from "../lib/event";
 import { sessionHasEnded } from "../lib/sessions";
 
 function sessionTime(session: EventSession) {
-  const format = (value: string) =>
-    new Date(value).toLocaleString([], {
-      month: "short",
-      day: "numeric",
+  const start = new Date(session.starts_at);
+  const end = session.ends_at ? new Date(session.ends_at) : null;
+  const format = (value: Date, includeDate = true) =>
+    value.toLocaleString([], {
+      ...(includeDate
+        ? ({
+            month: "short",
+            day: "numeric",
+          } as const)
+        : {}),
       hour: "numeric",
       minute: "2-digit",
-      timeZone: "UTC",
     });
-  return `${format(session.starts_at)}${session.ends_at ? ` – ${format(session.ends_at)}` : ""} UTC`;
+  const sameDay =
+    end &&
+    start.getFullYear() === end.getFullYear() &&
+    start.getMonth() === end.getMonth() &&
+    start.getDate() === end.getDate();
+  return `${format(start)}${end ? ` – ${format(end, !sameDay)}` : ""}`;
 }
 
 export function SessionSelector({
