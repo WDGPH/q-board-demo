@@ -17,6 +17,7 @@ import {
   LockKeyhole,
   RefreshCw,
   MessagesSquare,
+  Monitor,
 } from "lucide-react";
 import { supabase, preview, configurationError } from "./lib/supabase";
 import { readDemo, saveDemo } from "./lib/demo";
@@ -32,6 +33,7 @@ import { QuestionForm } from "./components/QuestionForm";
 import { QuestionCard } from "./components/QuestionCard";
 import { SessionSelector } from "./components/SessionSelector";
 import { ModeratorCard } from "./components/ModeratorCard";
+import { KioskView } from "./components/KioskView";
 import { statuses, type Event, type Question, type Status } from "./types";
 
 let sessionPromise: Promise<string> | undefined;
@@ -62,6 +64,8 @@ function Board() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [userId, setUserId] = useState("");
   const [authorized, setAuthorized] = useState(false);
+  const [kiosk, setKiosk] = useState(false);
+  const exitKiosk = useCallback(() => setKiosk(false), []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
@@ -80,6 +84,7 @@ function Board() {
     setSelectedSessionId(null);
     setEvent(null);
     setAuthorized(false);
+    setKiosk(false);
     setFilter("pending");
     setSort(moderator ? "newest" : "top");
     (async () => {
@@ -90,7 +95,12 @@ function Board() {
         if (!cancelled) {
           setEvent(configuredEvent);
           setSelectedSessionId(
-            defaultSession(configuredEvent.sessions ?? [])?.id ?? null,
+            configuredEvent.sessions?.find(
+              (s) =>
+                s.id === new URLSearchParams(location.search).get("session"),
+            )?.id ??
+              defaultSession(configuredEvent.sessions ?? [])?.id ??
+              null,
           );
           setUserId("preview");
           setQuestions(readDemo());
@@ -117,7 +127,11 @@ function Board() {
         const loadedEvent = configureDatabaseEvent(result.data);
         setEvent(loadedEvent);
         setSelectedSessionId(
-          defaultSession(loadedEvent.sessions ?? [])?.id ?? null,
+          loadedEvent.sessions?.find(
+            (s) => s.id === new URLSearchParams(location.search).get("session"),
+          )?.id ??
+            defaultSession(loadedEvent.sessions ?? [])?.id ??
+            null,
         );
         setUserId(id);
         setAuthorized(allowed);
@@ -140,31 +154,67 @@ function Board() {
       setQuestions(readDemo());
       return;
     }
+    if (kiosk) {
+      const role = await supabase!.rpc("is_moderator");
+      if (role.error) throw role.error;
+      if (!role.data) {
+        setKiosk(false);
+        setAuthorized(false);
+        setQuestions([]);
+        return;
+      }
+    }
     const { data, error } = await supabase!.rpc("list_questions", {
       p_event_id: event.id,
       p_moderator: moderator && authorized,
     });
     if (error) throw error;
     setQuestions(data || []);
-  }, [event, moderator, authorized]);
+  }, [event, moderator, authorized, kiosk]);
+  useEffect(() => {
+    if (!supabase) return;
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        setKiosk(false);
+        setAuthorized(false);
+        setQuestions([]);
+      }
+    });
+    return () => data.subscription.unsubscribe();
+  }, []);
   useEffect(() => {
     if (!event) return;
     let active = true;
-    const timer = setInterval(() => {
+    const timer = setInterval(
+      () => {
+        if (document.visibilityState === "visible")
+          refresh()
+            .then(() => {
+              if (active) setError("");
+            })
+            .catch(() => {
+              if (active) setError(uiText.updatesPaused);
+            });
+      },
+      kiosk ? 10000 : 20000,
+    );
+    const resume = () => {
       if (document.visibilityState === "visible")
         refresh()
-          .then(() => {
-            if (active) setError("");
-          })
-          .catch(() => {
-            if (active) setError(uiText.updatesPaused);
-          });
-    }, 20000);
+          .then(() => active && setError(""))
+          .catch(() => active && setError(uiText.updatesPaused));
+    };
+    document.addEventListener("visibilitychange", resume);
+    window.addEventListener("online", resume);
+    window.addEventListener("storage", resume);
     return () => {
       active = false;
       clearInterval(timer);
+      document.removeEventListener("visibilitychange", resume);
+      window.removeEventListener("online", resume);
+      window.removeEventListener("storage", resume);
     };
-  }, [event, refresh]);
+  }, [event, refresh, kiosk]);
   async function manualRefresh() {
     setRefreshing(true);
     try {
@@ -315,6 +365,19 @@ function Board() {
       : b.vote_count - a.vote_count ||
         Date.parse(a.created_at) - Date.parse(b.created_at),
   );
+  if (kiosk && moderator && authorized && event) {
+    return (
+      <KioskView
+        event={event}
+        questions={questions}
+        selectedSessionId={sessionId}
+        onSessionChange={setSelectedSessionId}
+        error={error}
+        preview={preview}
+        onExit={exitKiosk}
+      />
+    );
+  }
   return (
     <>
       <header className="site-header">
@@ -441,6 +504,12 @@ function Board() {
                   {moderator ? (
                     <>
                       <span className="eyebrow">{uiText.moderatorEyebrow}</span>
+                      <button
+                        className="button primary"
+                        onClick={() => setKiosk(true)}
+                      >
+                        <Monitor size={16} /> Open kiosk
+                      </button>
                       <button
                         className="button secondary"
                         onClick={() =>

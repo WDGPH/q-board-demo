@@ -1,6 +1,70 @@
 import { readFile } from "node:fs/promises";
 import { test, expect } from "@playwright/test";
 
+test("kiosk is launched by moderators and updates without a reload", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "Open kiosk" })).toHaveCount(0);
+  await page.goto("/moderator");
+  await page.getByRole("button", { name: "Open kiosk" }).click();
+  await expect(page.locator(".kiosk-question")).toBeVisible();
+  await expect(
+    page.getByText("Invite perspectives from both research and practice."),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Pause rotation" }).click();
+  await page.evaluate(() => {
+    const all = JSON.parse(
+      localStorage.getItem("q-board-preview-v1") || "null",
+    );
+    // Preview samples are seeded lazily; use a fresh public question as the full stored list.
+    localStorage.setItem(
+      "q-board-preview-v1",
+      JSON.stringify([
+        ...(all || []),
+        {
+          id: "live-kiosk",
+          event_id: "demo",
+          question_text: "A new question from the audience",
+          status: "approved",
+          created_at: new Date().toISOString(),
+          vote_count: 100,
+          has_voted: false,
+          moderator_note: "Never project this",
+        },
+      ]),
+    );
+    window.dispatchEvent(new Event("storage"));
+  });
+  await expect(page.locator(".kiosk-question")).toContainText(
+    "A new question from the audience",
+  );
+  await expect(page.getByText("Never project this")).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  if (testInfo.project.name === "desktop") {
+    await page.screenshot({
+      path: testInfo.outputPath("kiosk-desktop.png"),
+      fullPage: true,
+    });
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.screenshot({
+      path: testInfo.outputPath("kiosk-tablet.png"),
+      fullPage: true,
+    });
+    expect(
+      await page.evaluate(
+        () => document.querySelector(".kiosk")!.scrollHeight <= innerHeight,
+      ),
+    ).toBe(true);
+  }
+  await page.getByRole("button", { name: "Exit kiosk" }).click();
+  await expect(page.getByRole("button", { name: "Open kiosk" })).toBeVisible();
+});
+
 test.describe("local session times", () => {
   test.use({ timezoneId: "America/New_York", locale: "en-US" });
 

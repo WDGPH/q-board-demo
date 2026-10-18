@@ -4,7 +4,7 @@ import type { EventSession } from "../types";
 import { uiText } from "../lib/event";
 import { sessionHasEnded } from "../lib/sessions";
 
-function sessionTime(session: EventSession) {
+export function sessionTime(session: EventSession) {
   const start = new Date(session.starts_at);
   const end = session.ends_at ? new Date(session.ends_at) : null;
   const format = (value: Date, includeDate = true) =>
