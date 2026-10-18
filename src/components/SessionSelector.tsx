@@ -39,7 +39,6 @@ export function SessionSelector({
       </summary>
       <div className="session-selector-content">
         <div className="session-select-row">
-          <label htmlFor="event-session">{uiText.sessionLabel}</label>
           <select
             id="event-session"
             value={selectedId ?? ""}
@@ -53,7 +52,6 @@ export function SessionSelector({
             {showGeneral && <option value="">{uiText.generalQuestions}</option>}
           </select>
         </div>
-        <p className="session-intro">{uiText.sessionIntro}</p>
         <div className="session-details">
           <h2>{selected?.title ?? uiText.generalQuestions}</h2>
           {selected && (

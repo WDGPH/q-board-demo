@@ -11,8 +11,7 @@ export const demoEvent: Event = {
 };
 // Default UI copy. Override individual keys in event.config.ts under text.
 export const demoText = {
-  sessionLabel: "Session",
-  sessionIntro: "Choose a session to ask questions and join its conversation.",
+  sessionLabel: "Choose a Session",
   generalQuestions: "General questions",
   generalQuestionsDescription:
     "Questions submitted before sessions were configured.",

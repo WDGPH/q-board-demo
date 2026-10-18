@@ -1072,13 +1072,13 @@ textarea::placeholder {
   flex: 1;
   min-width: 0;
   max-width: 100%;
-  min-height: 48px;
+  min-height: 24px;
   padding: 10px;
   border: 1px solid #c7d4bf;
   border-radius: 6px;
   background: white;
   color: #273a34;
-  font-size: 16px;
+  font-size: 14px;
 }
 .session-intro {
   margin-top: 10px;
