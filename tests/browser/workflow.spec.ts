@@ -17,7 +17,7 @@ test("attendee submission, moderation, voting, notes, export, and persistence", 
   await page.goto("/");
   await expect(page.getByRole("heading", { name: /Big ideas/ })).toBeVisible();
   await expect(
-    page.getByRole("combobox", { name: "Session", exact: true }),
+    page.getByRole("combobox", { name: /session/i }),
   ).toHaveCount(0);
   await page.screenshot({
     path: testInfo.outputPath("attendee.png"),
@@ -127,6 +127,7 @@ test("event links resolve and unknown pages have recovery links", async ({
 test("sessions isolate submission, moderation, counts, voting, and exports", async ({
   page,
 }, testInfo) => {
+  await page.clock.setFixedTime(new Date("2026-11-20T08:00:00Z"));
   const sessions = [
     {
       id: "opening",
@@ -159,7 +160,7 @@ test("sessions isolate submission, moderation, counts, voting, and exports", asy
   await summary.focus();
   await page.keyboard.press("Enter");
   await expect(picker).toHaveAttribute("open", "");
-  const selector = page.getByRole("combobox", { name: "Session", exact: true });
+  const selector = page.getByRole("combobox", { name: /session/i });
   await expect(selector).toHaveValue("opening");
   await expect(page.getByText("Discuss our opening ideas.")).toBeVisible();
   await expect(page.locator(".session-time")).toContainText("UTC");
@@ -183,9 +184,9 @@ test("sessions isolate submission, moderation, counts, voting, and exports", asy
   await page.getByRole("button", { name: "Submit question" }).click();
   await expect(page.getByRole("status")).toContainText("submitted for review");
   await page.getByRole("link", { name: "Moderator access" }).click();
-  await summary.click();
   await expect(page.getByText("Question for opening speakers")).toBeVisible();
   await expect(page.getByText("Question for closing speakers")).toHaveCount(0);
+  if ((await picker.getAttribute("open")) === null) await summary.click();
   await expect(
     page.locator(".summary-grid").getByRole("button", { name: "Pending 1" }),
   ).toBeVisible();
@@ -203,9 +204,9 @@ test("sessions isolate submission, moderation, counts, voting, and exports", asy
   expect(csv).toContain('"closing","Closing panel"');
   expect(csv).not.toContain("Question for opening speakers");
   await page.getByRole("link", { name: "Question board", exact: true }).click();
-  await summary.click();
   await expect(page.getByText("Question for opening speakers")).toBeVisible();
   await expect(page.getByText("Question for closing speakers")).toHaveCount(0);
+  if ((await picker.getAttribute("open")) === null) await summary.click();
   await selector.selectOption("closing");
   await expect(page.getByText("Question for closing speakers")).toBeVisible();
   await expect(page.getByText("Question for opening speakers")).toHaveCount(0);
@@ -230,4 +231,58 @@ test("sessions isolate submission, moderation, counts, voting, and exports", asy
   await expect(
     page.locator(".question-card").getByRole("button"),
   ).toHaveAttribute("aria-pressed", "true");
+});
+
+test("session defaults follow the clock and ended sessions remain selectable", async ({
+  page,
+}) => {
+  await page.clock.install({ time: new Date("2026-11-20T11:30:00Z") });
+  const sessions = [
+    {
+      id: "past",
+      title: "Morning panel",
+      description: "Morning discussion",
+      starts_at: "2026-11-20T09:00:00Z",
+      ends_at: "2026-11-20T10:00:00Z",
+    },
+    {
+      id: "current",
+      title: "Midday panel",
+      description: "Midday discussion",
+      starts_at: "2026-11-20T11:00:00Z",
+      ends_at: "2026-11-20T12:00:00Z",
+    },
+    {
+      id: "next",
+      title: "Evening panel",
+      description: "Evening discussion",
+      starts_at: "2026-11-20T16:00:00Z",
+      ends_at: "2026-11-20T17:00:00Z",
+    },
+  ];
+  await page.route("**/event.config.ts*", (route) =>
+    route.fulfill({
+      contentType: "application/javascript",
+      body: `export default ${JSON.stringify({ sessions })}`,
+    }),
+  );
+  await page.goto("/");
+  const picker = page.locator(".session-selector");
+  const summary = picker.locator("summary");
+  await expect(summary).toContainText("Midday panel");
+  await summary.click();
+  const selector = page.getByRole("combobox", { name: /session/i });
+  await expect(selector.locator('option[value="past"]')).toContainText("Ended");
+  await selector.selectOption("past");
+  await expect(picker).toHaveClass(/session-ended/);
+  await summary.click();
+  await expect(summary).toContainText("Morning panel · Ended");
+  // Passing a boundary updates the status without moving a user's selection.
+  await summary.click();
+  await selector.selectOption("current");
+  await page.clock.fastForward(31 * 60 * 1000);
+  await expect(selector).toHaveValue("current");
+  await expect(summary).toContainText("Midday panel · Ended");
+  await page.reload();
+  await expect(summary).toContainText("Evening panel");
 });

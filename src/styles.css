@@ -1029,6 +1029,15 @@ textarea::placeholder {
   list-style: none;
   border-radius: inherit;
 }
+.session-selector.session-ended {
+  background: #f0f1ee;
+  border-color: #d9ddd5;
+}
+.session-ended .session-summary-title,
+.session-ended-label,
+.session-ended-option {
+  color: #64705f;
+}
 .session-summary::-webkit-details-marker {
   display: none;
 }

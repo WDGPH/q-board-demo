@@ -1,6 +1,8 @@
 import { CalendarDays, ChevronDown } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { EventSession } from "../types";
 import { uiText } from "../lib/event";
+import { sessionHasEnded } from "../lib/sessions";
 
 function sessionTime(session: EventSession) {
   const format = (value: string) =>
@@ -25,14 +27,25 @@ export function SessionSelector({
   onChange: (id: string) => void;
   showGeneral: boolean;
 }) {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const selected = sessions.find((s) => s.id === selectedId);
+  const selectedHasEnded = selected && sessionHasEnded(selected, now);
   return (
-    <details className="session-selector">
+    <details
+      className={`session-selector${selectedHasEnded ? " session-ended" : ""}`}
+    >
       <summary className="session-summary">
         <span className="session-summary-text">
           <span className="session-summary-label">{uiText.sessionLabel}</span>
           <span className="session-summary-title">
             {selected?.title ?? uiText.generalQuestions}
+            {selectedHasEnded && (
+              <span className="session-ended-label"> · Ended</span>
+            )}
           </span>
         </span>
         <ChevronDown className="session-chevron" size={20} aria-hidden="true" />
@@ -41,12 +54,22 @@ export function SessionSelector({
         <div className="session-select-row">
           <select
             id="event-session"
+            aria-label={uiText.sessionLabel}
             value={selectedId ?? ""}
             onChange={(e) => onChange(e.target.value)}
           >
             {sessions.map((session) => (
-              <option key={session.id} value={session.id}>
+              <option
+                key={session.id}
+                value={session.id}
+                className={
+                  sessionHasEnded(session, now)
+                    ? "session-ended-option"
+                    : undefined
+                }
+              >
                 {session.title} · {sessionTime(session)}
+                {sessionHasEnded(session, now) ? " · Ended" : ""}
               </option>
             ))}
             {showGeneral && <option value="">{uiText.generalQuestions}</option>}

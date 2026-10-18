@@ -86,7 +86,9 @@ Set `is_active = false` to close an event to attendees. Dates are descriptive; t
 
 ## Optional sessions
 
-Leave `sessions` out of the configuration for the existing single question list. To try multiple sessions locally, uncomment the `sessions` example in [event.config.ts](event.config.ts). Each session has a stable, unique `id`, a `title`, a `description`, and an ISO 8601 `starts_at` with timezone; `ends_at` is optional. Sessions appear in the configured order. The selector shows the title and time, with the full description and time below it, above both the question form and list. Times display in UTC. Dates describe the schedule and do not restrict submission times.
+Leave `sessions` out of the configuration for the existing single question list. To try multiple sessions locally, uncomment the `sessions` example in [event.config.ts](event.config.ts). Each session has a stable, unique `id`, a `title`, a `description`, and an ISO 8601 `starts_at` with timezone; `ends_at` is optional. Sessions appear in the configured order. The compact selector starts collapsed with the selected title; expand it for the dropdown, description, and times. Times display in UTC. Dates describe the schedule and do not restrict submission times.
+
+When the board loads, it uses the device clock to select the current session (the latest start wins if sessions overlap), then the earliest upcoming session, or the most recently started session if none remain. Manual choices stay selected while the board is open. Sessions with an elapsed `ends_at` are muted and labeled **Ended**, but remain selectable; this status refreshes every 30 seconds. Sessions without an end time are not marked ended. Supply end times for reliable defaults between sessions.
 
 For connected events, apply [the sessions migration](supabase/migrations/202610080001_sessions.sql), then set `events.sessions` in Supabase. **Connected mode always uses database sessions**, including for the default event; the frontend `sessions` setting is for preview only. This keeps the choices and database validation in sync and lets explicit event links have their own sessions. For example:
 

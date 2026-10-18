@@ -27,6 +27,7 @@ import {
   statusLabels,
 } from "./lib/event";
 import { downloadCsv } from "./lib/csv";
+import { defaultSession } from "./lib/sessions";
 import { QuestionForm } from "./components/QuestionForm";
 import { QuestionCard } from "./components/QuestionCard";
 import { SessionSelector } from "./components/SessionSelector";
@@ -88,6 +89,9 @@ function Board() {
           throw new Error(uiText.eventNotFound);
         if (!cancelled) {
           setEvent(configuredEvent);
+          setSelectedSessionId(
+            defaultSession(configuredEvent.sessions ?? [])?.id ?? null,
+          );
           setUserId("preview");
           setQuestions(readDemo());
           setAuthorized(moderator);
@@ -110,7 +114,11 @@ function Board() {
       });
       if (data.error) throw data.error;
       if (!cancelled) {
-        setEvent(configureDatabaseEvent(result.data));
+        const loadedEvent = configureDatabaseEvent(result.data);
+        setEvent(loadedEvent);
+        setSelectedSessionId(
+          defaultSession(loadedEvent.sessions ?? [])?.id ?? null,
+        );
         setUserId(id);
         setAuthorized(allowed);
         setQuestions(data.data || []);
