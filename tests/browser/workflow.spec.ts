@@ -149,6 +149,16 @@ test("sessions isolate submission, moderation, counts, voting, and exports", asy
     }),
   );
   await page.goto("/");
+  const picker = page.locator(".session-selector");
+  const summary = picker.locator("summary");
+  await expect(summary).toContainText("Opening panel");
+  await expect(picker).not.toHaveAttribute("open");
+  await expect(page.getByText("Discuss our opening ideas.")).toBeHidden();
+  // The collapsed picker stays compact and opens with the keyboard.
+  expect((await picker.boundingBox())!.height).toBeLessThan(100);
+  await summary.focus();
+  await page.keyboard.press("Enter");
+  await expect(picker).toHaveAttribute("open", "");
   const selector = page.getByRole("combobox", { name: "Session", exact: true });
   await expect(selector).toHaveValue("opening");
   await expect(page.getByText("Discuss our opening ideas.")).toBeVisible();
@@ -159,6 +169,12 @@ test("sessions isolate submission, moderation, counts, voting, and exports", asy
   await page.getByRole("button", { name: "Submit question" }).click();
   await expect(page.getByRole("status")).toContainText("submitted for review");
   await selector.selectOption("closing");
+  await summary.click();
+  await expect(summary).toContainText("Closing panel");
+  await expect(selector).toBeHidden();
+  await summary.focus();
+  await page.keyboard.press("Space");
+  await expect(selector).toBeVisible();
   await expect(page.getByRole("textbox")).toHaveValue("");
   await expect(page.getByRole("status")).toHaveCount(0);
   await page
@@ -167,6 +183,7 @@ test("sessions isolate submission, moderation, counts, voting, and exports", asy
   await page.getByRole("button", { name: "Submit question" }).click();
   await expect(page.getByRole("status")).toContainText("submitted for review");
   await page.getByRole("link", { name: "Moderator access" }).click();
+  await summary.click();
   await expect(page.getByText("Question for opening speakers")).toBeVisible();
   await expect(page.getByText("Question for closing speakers")).toHaveCount(0);
   await expect(
@@ -186,6 +203,7 @@ test("sessions isolate submission, moderation, counts, voting, and exports", asy
   expect(csv).toContain('"closing","Closing panel"');
   expect(csv).not.toContain("Question for opening speakers");
   await page.getByRole("link", { name: "Question board", exact: true }).click();
+  await summary.click();
   await expect(page.getByText("Question for opening speakers")).toBeVisible();
   await expect(page.getByText("Question for closing speakers")).toHaveCount(0);
   await selector.selectOption("closing");
@@ -195,6 +213,8 @@ test("sessions isolate submission, moderation, counts, voting, and exports", asy
   await expect(
     page.locator(".question-card").getByRole("button"),
   ).toHaveAttribute("aria-pressed", "true");
+  await summary.click();
+  await expect(summary).toContainText("Closing panel");
   await page.screenshot({
     path: testInfo.outputPath("sessions.png"),
     fullPage: true,
@@ -205,6 +225,7 @@ test("sessions isolate submission, moderation, counts, voting, and exports", asy
     ),
   ).toBe(true);
   await page.reload();
+  await summary.click();
   await selector.selectOption("closing");
   await expect(
     page.locator(".question-card").getByRole("button"),
