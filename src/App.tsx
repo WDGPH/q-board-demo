@@ -508,7 +508,7 @@ function Board() {
                         className="button primary"
                         onClick={() => setKiosk(true)}
                       >
-                        <Monitor size={16} /> Open kiosk
+                        <Monitor size={16} /> {uiText.openKiosk}
                       </button>
                       <button
                         className="button secondary"

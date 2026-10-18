@@ -13,6 +13,7 @@ import {
 import { QRCodeSVG } from "qrcode.react";
 import { sessionHasEnded } from "../lib/sessions";
 import { sessionTime } from "./SessionSelector";
+import { uiText } from "../lib/event";
 import type { Event, Question } from "../types";
 
 export function KioskView({
@@ -62,13 +63,18 @@ export function KioskView({
   );
   if (selected) participationUrl.searchParams.set("session", selected.id);
   const url = participationUrl.toString();
+  const invitationHeading = event.is_active
+    ? uiText.kioskInvitationHeading
+    : uiText.kioskClosedHeading;
+  const invitationPunctuation =
+    invitationHeading.match(/[?!.？！。]$/)?.[0] ?? "";
   const sessionState = selected
     ? sessionHasEnded(selected, now)
-      ? "Session ended"
+      ? uiText.kioskSessionEnded
       : Date.parse(selected.starts_at) > now
-        ? "Coming up"
-        : "In session"
-    : "The conversation so far";
+        ? uiText.kioskComingUp
+        : uiText.kioskInSession
+    : uiText.kioskConversationSoFar;
 
   useEffect(() => {
     setPage(0);
@@ -108,9 +114,7 @@ export function KioskView({
       else throw new Error();
       setFullscreenError("");
     } catch {
-      setFullscreenError(
-        "Full screen unavailable. Use your browser’s full screen option.",
-      );
+      setFullscreenError(uiText.kioskFullscreenUnavailable);
     }
   }
 
@@ -128,22 +132,26 @@ export function KioskView({
           role="status"
         >
           <span />
-          {error
-            ? "Reconnecting · showing last update"
-            : "Auto-updating · every 10s"}
+          {error ? uiText.kioskReconnecting : uiText.kioskUpdating}
         </div>
       </header>
       <main className="kiosk-stage">
-        <section className="kiosk-conversation" aria-label="Audience questions">
+        <section
+          className="kiosk-conversation"
+          aria-label={uiText.kioskQuestionsLabel}
+        >
           <div className="kiosk-kicker">
             {sessionState}
-            <span>{String(count).padStart(2, "0")} questions on the board</span>
+            <span>
+              {uiText.kioskQuestionCount.replaceAll(
+                "{count}",
+                String(count).padStart(2, "0"),
+              )}
+            </span>
           </div>
           <h1>
             {selected?.title ??
-              (sessions.length
-                ? "General questions"
-                : "A room full of curiosity.")}
+              (sessions.length ? uiText.generalQuestions : uiText.kioskHeading)}
           </h1>
           {selected && (
             <p className="kiosk-session-time">{sessionTime(selected)}</p>
@@ -154,16 +162,17 @@ export function KioskView({
                 <span>
                   {question.status === "answered" ? (
                     <>
-                      <Check size={18} /> Answered
+                      <Check size={18} /> {uiText.statusAnswered}
                     </>
                   ) : question.status === "shortlisted" ? (
-                    "In the spotlight"
+                    uiText.kioskSpotlight
                   ) : (
-                    "From the audience"
+                    uiText.kioskFromAudience
                   )}
                 </span>
                 <span>
-                  <ArrowUp size={18} /> {question.vote_count} votes
+                  <ArrowUp size={18} /> {question.vote_count}{" "}
+                  {uiText.votesLabel}
                 </span>
               </div>
               <p
@@ -176,7 +185,7 @@ export function KioskView({
                 {question.question_text}
               </p>
               <div className="kiosk-card-bottom">
-                <span>Anonymous question</span>
+                <span>{uiText.kioskAnonymousQuestion}</span>
                 <span>
                   {String(index + 1).padStart(2, "0")} /{" "}
                   {String(count).padStart(2, "0")}
@@ -186,43 +195,41 @@ export function KioskView({
           ) : (
             <div className="kiosk-empty">
               <MessageSquare size={48} strokeWidth={1.3} />
-              <h2>
-                The next great question
-                <br />
-                could be yours.
+              <h2 style={{ whiteSpace: "pre-line" }}>
+                {uiText.kioskEmptyHeading}
               </h2>
-              <p>
-                Scan the code. Share your curiosity.
-                <br />
-                Questions appear here after review.
-              </p>
+              <p style={{ whiteSpace: "pre-line" }}>{uiText.kioskEmptyText}</p>
             </div>
           )}
           <div className="kiosk-pagination">
             <span>
               {count > 1
                 ? paused
-                  ? "Rotation paused"
-                  : "A new perspective every 16 seconds"
-                : "Good questions start better conversations."}
+                  ? uiText.kioskRotationPaused
+                  : uiText.kioskRotationHint
+                : uiText.kioskConversationHint}
             </span>
             <div>
               <button
-                aria-label="Previous question"
+                aria-label={uiText.kioskPreviousQuestion}
                 disabled={count < 2}
                 onClick={() => setPage((index + count - 1) % count)}
               >
                 <ArrowLeft size={20} />
               </button>
               <button
-                aria-label={paused ? "Resume rotation" : "Pause rotation"}
+                aria-label={
+                  paused
+                    ? uiText.kioskResumeRotation
+                    : uiText.kioskPauseRotation
+                }
                 aria-pressed={paused}
                 onClick={() => setPaused(!paused)}
               >
                 {paused ? <Play size={18} /> : <Pause size={18} />}
               </button>
               <button
-                aria-label="Next question"
+                aria-label={uiText.kioskNextQuestion}
                 disabled={count < 2}
                 onClick={() => setPage((index + 1) % count)}
               >
@@ -233,34 +240,26 @@ export function KioskView({
         </section>
         <aside className="kiosk-invitation">
           <span className="kiosk-invite-kicker">
-            YOUR PERSPECTIVE BELONGS HERE
+            {uiText.kioskInvitationEyebrow}
           </span>
-          <h2>
-            {event.is_active ? (
-              <>
-                What’s on
-                <br />
-                your mind<span>?</span>
-              </>
-            ) : (
-              <>
-                Keep the
-                <br />
-                ideas going<span>.</span>
-              </>
+          <h2 style={{ whiteSpace: "pre-line" }}>
+            {invitationHeading.slice(
+              0,
+              invitationHeading.length - invitationPunctuation.length,
             )}
+            <span>{invitationPunctuation}</span>
           </h2>
           <p>
             {event.is_active
-              ? "Ask a question. Vote for the ideas you want to hear more about."
-              : "Submissions are closed. Explore the questions and perspectives shared so far."}
+              ? uiText.kioskInvitationText
+              : uiText.kioskClosedText}
           </p>
           <a
             className="kiosk-qr"
             href={url}
             target="_blank"
             rel="noreferrer"
-            aria-label="Open the attendee question board"
+            aria-label={uiText.kioskAttendeeBoardLabel}
           >
             <QRCodeSVG
               value={url}
@@ -272,44 +271,52 @@ export function KioskView({
             />
           </a>
           <strong>
-            Scan to{" "}
-            {event.is_active ? "join the conversation" : "explore the board"}{" "}
+            {event.is_active
+              ? uiText.kioskScanToJoin
+              : uiText.kioskScanToExplore}{" "}
             <ArrowUp size={19} />
           </strong>
           <a className="kiosk-url" href={url} target="_blank" rel="noreferrer">
             {participationUrl.host}
             {participationUrl.pathname}
           </a>
-          <small>Anonymous submissions · Reviewed by moderators</small>
+          <small>{uiText.kioskPrivacy}</small>
         </aside>
       </main>
       <footer className="kiosk-controls">
         <span className="kiosk-footer-brand">
-          qboard <span> / {preview ? "LOCAL PREVIEW" : "LIVE QUESTIONS"}</span>
+          {uiText.brandPrefix}
+          {uiText.brandSuffix}{" "}
+          <span>
+            {" "}
+            / {preview ? uiText.kioskPreview : uiText.kioskLiveQuestions}
+          </span>
         </span>
         <div className="kiosk-operator-controls">
           {sessions.length > 0 && (
             <select
-              aria-label="Kiosk session"
+              aria-label={uiText.kioskSessionLabel}
               value={selectedSessionId ?? ""}
               onChange={(e) => onSessionChange(e.target.value)}
             >
               {sessions.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.title}
-                  {sessionHasEnded(s, now) ? " · Ended" : ""}
+                  {sessionHasEnded(s, now)
+                    ? ` · ${uiText.kioskEndedOption}`
+                    : ""}
                 </option>
               ))}
               {questions.some((q) => !q.session_id) && (
-                <option value="">General questions</option>
+                <option value="">{uiText.generalQuestions}</option>
               )}
             </select>
           )}
           <button onClick={fullscreen}>
-            <Maximize size={16} /> Full screen
+            <Maximize size={16} /> {uiText.kioskFullscreen}
           </button>
           <button ref={exitButton} onClick={onExit}>
-            <X size={17} /> Exit kiosk
+            <X size={17} /> {uiText.kioskExit}
           </button>
         </div>
       </footer>
