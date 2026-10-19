@@ -37,15 +37,20 @@ export function KioskView({
   const exitButton = useRef<HTMLButtonElement>(null);
   const [page, setPage] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [allSessions, setAllSessions] = useState(false);
   const [fullscreenError, setFullscreenError] = useState("");
   const [now, setNow] = useState(Date.now);
   const sessions = event.sessions ?? [];
-  const selected = sessions.find((s) => s.id === selectedSessionId);
+  const selected = allSessions
+    ? undefined
+    : sessions.find((s) => s.id === selectedSessionId);
   const publicQuestions = questions
     .filter(
       (q) =>
         ["approved", "shortlisted", "answered"].includes(q.status) &&
-        (!sessions.length || (q.session_id ?? null) === selectedSessionId),
+        (allSessions ||
+          !sessions.length ||
+          (q.session_id ?? null) === selectedSessionId),
     )
     .sort(
       (a, b) =>
@@ -57,6 +62,7 @@ export function KioskView({
   const count = publicQuestions.length;
   const index = count ? page % count : 0;
   const question = publicQuestions[index];
+  const questionSession = sessions.find((s) => s.id === question?.session_id);
   const participationUrl = new URL(
     `/e/${encodeURIComponent(event.slug)}`,
     window.location.origin,
@@ -78,7 +84,7 @@ export function KioskView({
 
   useEffect(() => {
     setPage(0);
-  }, [selectedSessionId]);
+  }, [selectedSessionId, allSessions]);
   useEffect(() => {
     if (paused || count < 2) return;
     const timer = window.setInterval(
@@ -86,7 +92,7 @@ export function KioskView({
       16000,
     );
     return () => window.clearInterval(timer);
-  }, [paused, count, selectedSessionId]);
+  }, [paused, count, selectedSessionId, allSessions]);
   useEffect(() => {
     exitButton.current?.focus();
     const element = root.current;
@@ -150,8 +156,12 @@ export function KioskView({
             </span>
           </div>
           <h1>
-            {selected?.title ??
-              (sessions.length ? uiText.generalQuestions : uiText.kioskHeading)}
+            {allSessions
+              ? uiText.kioskAllSessions
+              : (selected?.title ??
+                (sessions.length
+                  ? uiText.generalQuestions
+                  : uiText.kioskHeading))}
           </h1>
           {selected && (
             <p className="kiosk-session-time">{sessionTime(selected)}</p>
@@ -185,7 +195,11 @@ export function KioskView({
                 {question.question_text}
               </p>
               <div className="kiosk-card-bottom">
-                <span>{uiText.kioskAnonymousQuestion}</span>
+                <span>
+                  {allSessions
+                    ? (questionSession?.title ?? uiText.generalQuestions)
+                    : uiText.kioskAnonymousQuestion}
+                </span>
                 <span>
                   {String(index + 1).padStart(2, "0")} /{" "}
                   {String(count).padStart(2, "0")}
@@ -296,11 +310,25 @@ export function KioskView({
           {sessions.length > 0 && (
             <select
               aria-label={uiText.kioskSessionLabel}
-              value={selectedSessionId ?? ""}
-              onChange={(e) => onSessionChange(e.target.value)}
+              value={
+                allSessions
+                  ? "all"
+                  : selectedSessionId === null
+                    ? "general"
+                    : `session:${selectedSessionId}`
+              }
+              onChange={(e) => {
+                const value = e.target.value;
+                setAllSessions(value === "all");
+                if (value !== "all")
+                  onSessionChange(
+                    value === "general" ? "" : value.slice("session:".length),
+                  );
+              }}
             >
+              <option value="all">{uiText.kioskAllSessions}</option>
               {sessions.map((s) => (
-                <option key={s.id} value={s.id}>
+                <option key={s.id} value={`session:${s.id}`}>
                   {s.title}
                   {sessionHasEnded(s, now)
                     ? ` · ${uiText.kioskEndedOption}`
@@ -308,7 +336,7 @@ export function KioskView({
                 </option>
               ))}
               {questions.some((q) => !q.session_id) && (
-                <option value="">{uiText.generalQuestions}</option>
+                <option value="general">{uiText.generalQuestions}</option>
               )}
             </select>
           )}

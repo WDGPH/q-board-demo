@@ -51,6 +51,7 @@ export const demoText = {
   kioskPreview: "LOCAL PREVIEW",
   kioskLiveQuestions: "LIVE QUESTIONS",
   kioskSessionLabel: "Kiosk session",
+  kioskAllSessions: "All sessions",
   kioskEndedOption: "Ended",
   kioskFullscreen: "Full screen",
   kioskExit: "Exit kiosk",

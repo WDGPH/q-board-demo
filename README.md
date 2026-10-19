@@ -86,6 +86,8 @@ Set `is_active = false` to close an event to attendees. Dates are descriptive; t
 
 ## Projector / kiosk view
 
+In the kiosk's bottom session selector, **All sessions** mixes public questions from every session, including general questions, using the existing vote order and automatic rotation. Each card shows its session title. The QR code links to the event board so attendees can choose a session. This kiosk-only selection keeps the moderator panel's selected session intact. Customize its label with `text.kioskAllSessions`.
+
 Customize kiosk copy through `text` in `event.config.ts`, using the `kiosk*` keys and `openKiosk` listed with their fallback values in `src/lib/demo.ts`. Shared copy uses the existing `brandPrefix`, `brandSuffix`, `generalQuestions`, `statusAnswered`, and `votesLabel` keys. Omitted or `undefined` values retain defaults; empty strings intentionally clear copy. `kioskInvitationHeading`, `kioskClosedHeading`, `kioskEmptyHeading`, and `kioskEmptyText` support `\n` line breaks. `kioskQuestionCount` accepts `{count}` anywhere in the text. Copy overrides do not change the polling or rotation intervals.
 
 Choose **Open kiosk** in the moderator panel. This view is available only inside the authorized panel (local preview intentionally grants moderator access). It displays approved, shortlisted, and answered questions; pending/hidden questions and moderator notes are excluded. Questions rotate every 16 seconds, with pause and previous/next controls. Updates arrive automatically every 10 seconds while visible; connection failures retain the last loaded board.
