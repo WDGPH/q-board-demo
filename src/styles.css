@@ -1010,3 +1010,123 @@ textarea::placeholder {
 .vote-button {
   width: 44px;
 }
+
+.session-selector {
+  margin-bottom: 20px;
+  border: 1px solid #dce4d6;
+  border-radius: 12px;
+  background: #eef3e7;
+  overflow-wrap: anywhere;
+}
+.session-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px 18px;
+  cursor: pointer;
+  list-style: none;
+  border-radius: inherit;
+}
+.session-selector.session-ended {
+  background: #f0f1ee;
+  border-color: #d9ddd5;
+}
+.session-ended .session-summary-title,
+.session-ended-label,
+.session-ended-option {
+  color: #64705f;
+}
+.session-summary::-webkit-details-marker {
+  display: none;
+}
+.session-summary:focus-visible {
+  outline: 3px solid #273a34;
+  outline-offset: 3px;
+}
+.session-summary-text {
+  min-width: 0;
+}
+.session-summary-label {
+  display: block;
+  font-size: 12px;
+  color: #64705f;
+}
+.session-summary-title {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.session-chevron {
+  flex-shrink: 0;
+}
+.session-selector[open] .session-chevron {
+  transform: rotate(180deg);
+}
+.session-selector-content {
+  padding: 16px 18px;
+  border-top: 1px solid #dce4d6;
+}
+.session-select-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.session-select-row label {
+  font-weight: 600;
+}
+.session-select-row select {
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 24px;
+  padding: 10px;
+  border: 1px solid #c7d4bf;
+  border-radius: 6px;
+  background: white;
+  color: #273a34;
+  font-size: 14px;
+}
+.session-intro {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #64705f;
+}
+.session-details {
+  margin-top: 12px;
+}
+.session-details h2 {
+  font-size: 21px;
+}
+.session-details p {
+  margin-top: 8px;
+}
+.session-time {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #64705f;
+}
+@media (max-width: 680px) {
+  .session-selector {
+    margin-bottom: 16px;
+  }
+  .session-summary {
+    min-height: 60px;
+    padding: 10px 14px;
+  }
+  .session-selector-content {
+    padding: 14px;
+  }
+  .session-select-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .session-select-row select {
+    width: 100%;
+  }
+}

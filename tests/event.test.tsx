@@ -171,3 +171,25 @@ describe("event configuration", () => {
     expect(submit).not.toHaveBeenCalled();
   });
 });
+
+it("resolves optional preview sessions and uses database sessions in connected mode", () => {
+  const sessions = [
+    {
+      id: "opening",
+      title: "Opening",
+      description: "Panel",
+      starts_at: "2026-11-20T09:00:00Z",
+    },
+  ];
+  expect(resolveEvent({ sessions }).sessions).toEqual(sessions);
+  expect(
+    resolveEvent({ sessions: [] }, { ...demoEvent, sessions }).sessions,
+  ).toEqual([]);
+  expect(
+    configureDatabaseEvent({
+      ...demoEvent,
+      slug: configuredEvent.slug,
+      sessions,
+    }).sessions,
+  ).toEqual(sessions);
+});

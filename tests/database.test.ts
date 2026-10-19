@@ -20,6 +20,9 @@ beforeAll(async () => {
   await db.exec(
     readFileSync("supabase/migrations/202609150001_initial.sql", "utf8"),
   );
+  await db.exec(
+    readFileSync("supabase/migrations/202610080001_sessions.sql", "utf8"),
+  );
   await db.query("insert into auth.users(id) values ($1),($2),($3)", [
     attendee,
     other,
@@ -233,3 +236,124 @@ describe.sequential(
     });
   },
 );
+
+describe.sequential("optional event sessions", () => {
+  const sessionEvent = "10000000-0000-4000-8000-000000000022";
+  const sessions = [
+    {
+      id: "opening",
+      title: "Opening",
+      description: "Opening questions",
+      starts_at: "2026-11-20T09:00:00Z",
+    },
+    {
+      id: "closing",
+      title: "Closing",
+      description: "Closing questions",
+      starts_at: "2026-11-20T16:00:00Z",
+    },
+  ];
+  it("validates session configuration and rejects duplicate IDs and invalid times", async () => {
+    await db.exec("reset role");
+    for (const invalid of [
+      {},
+      [{ ...sessions[0], starts_at: "bad" }],
+      [sessions[0], sessions[0]],
+      [{ ...sessions[0], description: null }],
+    ]) {
+      await expect(
+        db.query(
+          "insert into public.events(name,slug,sessions) values('Invalid','invalid',$1)",
+          [JSON.stringify(invalid)],
+        ),
+      ).rejects.toThrow(/check constraint/);
+    }
+    await db.query(
+      "insert into public.events(id,name,slug,is_active,sessions) values($1,'Sessions','sessions',true,$2)",
+      [sessionEvent, JSON.stringify(sessions)],
+    );
+  });
+  it("requires a session for configured events and rejects IDs from other events", async () => {
+    await asUser(other);
+    for (const id of [null, "unknown"]) {
+      await expect(
+        db.query(
+          "insert into public.questions(event_id,submitter_id,question_text,session_id) values($1,$2,'Question',$3)",
+          [sessionEvent, other, id],
+        ),
+      ).rejects.toThrow(/select a session|does not belong/);
+    }
+    await expect(
+      db.query(
+        "insert into public.questions(event_id,submitter_id,question_text,session_id) values($1,$2,'Question','opening')",
+        [event, other],
+      ),
+    ).rejects.toThrow(/does not belong/);
+  });
+  it("persists session identity through moderation, voting, and private-note filtering", async () => {
+    await db.query(
+      "insert into public.questions(event_id,submitter_id,question_text,session_id) values($1,$2,'Opening question','opening'),($1,$2,'Closing question','closing')",
+      [sessionEvent, other],
+    );
+    await asUser(moderator);
+    const pending = await db.query<{ id: string; session_id: string }>(
+      "select * from public.list_questions($1,true)",
+      [sessionEvent],
+    );
+    expect(pending.rows.map((q) => q.session_id).sort()).toEqual([
+      "closing",
+      "opening",
+    ]);
+    const opening = pending.rows.find((q) => q.session_id === "opening")!;
+    await db.query("select public.moderate_question($1,'approved','Private')", [
+      opening.id,
+    ]);
+    await asUser(other);
+    await db.query(
+      "insert into public.votes(question_id,event_id,voter_id) values($1,$2,$3)",
+      [opening.id, sessionEvent, other],
+    );
+    const visible = await db.query<{
+      session_id: string;
+      moderator_note: string | null;
+      vote_count: number;
+    }>("select * from public.list_questions($1,false)", [sessionEvent]);
+    expect(visible.rows).toHaveLength(1);
+    expect(visible.rows[0].session_id).toBe("opening");
+    expect(visible.rows[0].moderator_note).toBeNull();
+    expect(Number(visible.rows[0].vote_count)).toBe(1);
+  });
+  it("keeps the five-question limit across all sessions in an event", async () => {
+    for (let i = 0; i < 3; i++)
+      await db.query(
+        "insert into public.questions(event_id,submitter_id,question_text,session_id) values($1,$2,'Another','closing')",
+        [sessionEvent, other],
+      );
+    await expect(
+      db.query(
+        "insert into public.questions(event_id,submitter_id,question_text,session_id) values($1,$2,'Sixth','opening')",
+        [sessionEvent, other],
+      ),
+    ).rejects.toThrow(/limit of 5/);
+  });
+  it("preserves legacy questions and prevents removing sessions with questions", async () => {
+    await db.exec("reset role");
+    await db.query("update public.events set sessions=$1 where id=$2", [
+      JSON.stringify(sessions),
+      event,
+    ]);
+    await asUser(moderator);
+    const legacy = await db.query<{ session_id: string | null }>(
+      "select * from public.list_questions($1,true)",
+      [event],
+    );
+    expect(legacy.rows.length).toBeGreaterThan(0);
+    expect(legacy.rows.every((q) => q.session_id === null)).toBe(true);
+    await db.exec("reset role");
+    await expect(
+      db.query("update public.events set sessions='[]' where id=$1", [
+        sessionEvent,
+      ]),
+    ).rejects.toThrow(/Cannot remove/);
+  });
+});

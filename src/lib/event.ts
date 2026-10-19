@@ -40,6 +40,9 @@ export function resolveEvent(
       config.starts_at === undefined ? defaults.starts_at : config.starts_at,
     ends_at: config.ends_at === undefined ? defaults.ends_at : config.ends_at,
     is_active: config.is_active ?? defaults.is_active,
+    ...(config.sessions !== undefined || defaults.sessions !== undefined
+      ? { sessions: config.sessions ?? defaults.sessions }
+      : {}),
   };
 }
 
@@ -48,6 +51,6 @@ export const configuredEvent = resolveEvent(eventConfig);
 // Explicit links to other database events keep their own event details.
 export function configureDatabaseEvent(event: Event): Event {
   return event.slug === configuredEvent.slug
-    ? resolveEvent(eventConfig, event)
+    ? resolveEvent({ ...eventConfig, sessions: event.sessions }, event)
     : event;
 }

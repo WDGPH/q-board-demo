@@ -1,6 +1,6 @@
 # Q Board
 
-A mobile-first conference question board built with React, TypeScript, Vite, and Supabase. Attendees submit anonymous questions and toggle upvotes. Moderators review, approve, shortlist, hide, answer, add private notes, and export all event questions as CSV.
+A mobile-first conference question board built with React, TypeScript, Vite, and Supabase. Attendees submit anonymous questions and toggle upvotes. Moderators review, approve, shortlist, hide, answer, add private notes, and export questions as CSV (for the selected session when sessions are enabled).
 
 ## Run locally
 
@@ -27,7 +27,7 @@ Before the first browser test, run `npx playwright install chromium`. Browser te
 
 1. Create a Supabase project.
 2. Under **Authentication → Providers / Sign In**, enable anonymous sign-ins. Enable email/password authentication for moderators. Disable public email sign-ups once you have created your moderator accounts; anonymous sign-ins are a separate setting.
-3. Execute [the migration](supabase/migrations/202609150001_initial.sql) in the SQL editor as the database owner, once per database. Keep subsequent schema changes in new migration files. The SQL is also compatible with the Supabase CLI migration workflow.
+3. Execute all files in [supabase/migrations](supabase/migrations) in filename order in the SQL editor as the database owner, once per database. Keep subsequent schema changes in new migration files. The SQL is also compatible with the Supabase CLI migration workflow.
 4. In a **development project only**, execute [seed.sql](supabase/seed.sql). It creates an event, 10 questions across all statuses, six synthetic identities with no login credentials, and sample votes. It is safe to rerun. For production, create an empty event using the SQL below instead.
 5. Create at least two email/password users using the Auth dashboard. Confirm their emails through the dashboard, then add their UUIDs as moderators:
 
@@ -84,10 +84,51 @@ values (
 
 Set `is_active = false` to close an event to attendees. Dates are descriptive; they do not automatically open or close submissions. Event dates are displayed in UTC; submission times use the moderator’s browser timezone. Moderator accounts have access to all events, as scoped for v1.
 
+## Optional sessions
+
+Leave `sessions` out of the configuration for the existing single question list. To try multiple sessions locally, uncomment the `sessions` example in [event.config.ts](event.config.ts). Each session has a stable, unique `id`, a `title`, a `description`, and an ISO 8601 `starts_at` with timezone; `ends_at` is optional. Sessions appear in the configured order. The compact selector starts collapsed with the selected title; expand it for the dropdown, description, and times. Session times use the viewer's browser timezone and locale. Same-day ranges show the date once; ranges crossing local midnight show both dates. Dates describe the schedule and do not restrict submission times.
+
+When the board loads, it uses the device clock to select the current session (the latest start wins if sessions overlap), then the earliest upcoming session, or the most recently started session if none remain. Manual choices stay selected while the board is open. Sessions with an elapsed `ends_at` are muted and labeled **Ended**, but remain selectable; this status refreshes every 30 seconds. Sessions without an end time are not marked ended. Supply end times for reliable defaults between sessions.
+
+For connected events, apply [the sessions migration](supabase/migrations/202610080001_sessions.sql), then set `events.sessions` in Supabase. **Connected mode always uses database sessions**, including for the default event; the frontend `sessions` setting is for preview only. This keeps the choices and database validation in sync and lets explicit event links have their own sessions. For example:
+
+```sql
+update public.events
+set sessions = '[
+  {
+    "id": "opening-panel",
+    "title": "Opening panel",
+    "description": "Questions for our opening speakers.",
+    "starts_at": "2026-11-20T09:00:00Z",
+    "ends_at": "2026-11-20T10:00:00Z"
+  },
+  {
+    "id": "closing-panel",
+    "title": "Closing panel",
+    "description": "Reflections and next steps.",
+    "starts_at": "2026-11-20T16:00:00Z"
+  }
+]'::jsonb
+where slug = 'public-health-ai-symposium';
+```
+
+Attendees submit to the selected session and see only its public questions. Switching sessions resets the form, including unsent text and submission messages. Moderators use the same selector; status counts, review lists, and CSV exports cover the selected session. Session-enabled exports include session ID and title. Votes and notes stay attached to their original question. The five-question cap remains **per identity per event**, shared across sessions.
+
+Existing questions retain a null session ID. When adding sessions to an event that already has questions, moderators can still review and export those under **General questions**; they do not appear on attendees’ session boards. If appropriate, assign them to a configured session as the database owner:
+
+```sql
+update public.questions
+set session_id = 'opening-panel'
+where event_id = (select id from public.events where slug = 'public-health-ai-symposium')
+  and session_id is null;
+```
+
+The database rejects unknown sessions and requires a session on new questions for session-enabled events. Session IDs with questions cannot be removed or renamed; titles, descriptions, and times can be edited. Existing events default to `sessions = []` and need no additional setup. In preview, existing sample questions remain general questions rather than being assigned arbitrarily to a session.
+
 ## Security design
 
 - RLS is enabled on all four tables. Explicit grants restrict API access.
-- Question inserts permit only text, event ID, and the current submitter UUID. The database supplies pending status and timestamps.
+- Question inserts permit only text, event ID, optional session ID, and the current submitter UUID. The database supplies pending status and timestamps.
 - A database trigger enforces a five-question limit, with an advisory transaction lock to serialize concurrent submissions for the same identity/event.
 - Attendees may read public questions and their own submissions, but cannot update or delete questions.
 - **RLS alone does not hide columns.** `moderator_note` and submitter identities have no direct client SELECT grant. `list_questions` exposes safe fields and returns notes only after a database moderator check. `moderate_question` also checks moderator membership. Both functions use a fixed empty search path.
@@ -103,7 +144,7 @@ References: [Supabase anonymous sign-ins](https://supabase.com/docs/guides/auth/
 1. Push the repository to your Git host and import it into Vercel.
 2. Choose the Vite preset: build command `npm run build`, output directory `dist`.
 3. Set **both** `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in the production environment. They are embedded at build time, so redeploy after changes.
-4. Run the migration in your production Supabase project and create the event and moderator users as above. Do not load development seeds into production.
+4. Run all migrations in your production Supabase project and create the event and moderator users as above. Do not load development seeds into production.
 5. Deploy. `vercel.json` provides SPA rewrites so direct event and moderator links work.
 6. Configure the HTTPS site URL in Supabase Auth. For a custom domain, add it in Vercel’s domain settings, apply the provided DNS records, and update the Supabase site URL.
 7. Verify that the local-preview banner is absent, then carry out the launch checks below.
@@ -126,6 +167,6 @@ Before using at a conference:
 
 ## Scope notes
 
-Implemented from [the v1 scope](conference_questions_v1_scope.md). Small implementation choices: password-based moderator login, 20-second polling instead of realtime, protected database functions for private-note reads and moderation, and a clearly labeled local preview for setup-free review. Preview storage is not used when Supabase is configured. No v2 features were added.
+Implemented from [the v1 scope](conference_questions_v1_scope.md). Small implementation choices: password-based moderator login, 20-second polling instead of realtime, protected database functions for private-note reads and moderation, and a clearly labeled local preview for setup-free review. Preview storage is not used when Supabase is configured. Optional event sessions extend the original single-list workflow.
 
 Hosted provisioning, public HTTPS deployment, hosted Auth/API verification, and physical-device checks require an organizer’s environment and remain launch tasks. Google Fonts enhances typography; system font fallbacks keep the app usable if the font service is unavailable.
