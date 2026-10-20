@@ -12,8 +12,8 @@
   color: #f3f4e9;
   display: flex;
   flex-direction: column;
-  padding: clamp(20px, 3vw, 56px);
-  gap: clamp(16px, 2.5vh, 32px);
+  padding: clamp(16px, 2.5dvh, 32px) clamp(20px, 3vw, 56px);
+  gap: clamp(12px, 2dvh, 24px);
 }
 .kiosk-header,
 .kiosk-identity,
@@ -72,8 +72,9 @@
   gap: clamp(24px, 4vw, 70px);
   width: 100%;
   max-width: 2000px;
-  min-height: auto;
+  min-height: 0;
   padding: 0;
+  margin: 0 auto;  
 }
 .kiosk-conversation {
   display: flex;
@@ -95,11 +96,11 @@
   color: #b4c7bb;
 }
 .kiosk-conversation h1 {
-  font-size: clamp(28px, 3vw, 58px);
+  font-size: clamp(24px, min(3vw, 4dvh), 58px);
   line-height: 1.2;
   letter-spacing: -1.5px;
   overflow-wrap: anywhere;
-  margin-bottom: 18px;
+  margin-bottom: clamp(10px, 1.5dvh, 18px);
 }
 .kiosk-session-time {
   margin: -7px 0 20px;
@@ -112,10 +113,10 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 24px;
+  gap: clamp(12px, 1.8dvh, 24px);
   background: #f4f3e8;
   color: #183b31;
-  padding: clamp(24px, 3vw, 58px);
+  padding: clamp(18px, min(2.5vw, 3dvh), 48px);
   border-radius: 6px 40px 40px 40px;
   box-shadow: 0 15px 60px #0002;
   animation: kiosk-arrive 0.45s ease-out;
@@ -137,13 +138,13 @@
 .kiosk-question > p {
   font-family: "Manrope", sans-serif;
   font-weight: 600;
-  font-size: clamp(27px, 3vw, 58px);
+  font-size: clamp(24px, min(3vw, 4dvh), 58px);
   line-height: 1.35;
   letter-spacing: -1px;
   overflow-wrap: anywhere;
 }
 .kiosk-question > p.kiosk-long-question {
-  font-size: clamp(23px, 2.15vw, 42px);
+  font-size: clamp(20px, min(2.15vw, 2.8dvh), 42px);
 }
 .kiosk-card-bottom {
   border-top: 1px solid #183b3125;
@@ -195,30 +196,30 @@
   font-weight: 600;
 }
 .kiosk-invitation h2 {
-  font-size: clamp(38px, 4.4vw, 86px);
+  font-size: clamp(32px, min(4.4vw, 6dvh), 78px);
   line-height: 1.04;
   letter-spacing: -2.5px;
-  margin: 18px 0;
+  margin: clamp(10px, 1.5dvh, 18px) 0;
 }
 .kiosk-invitation h2 span {
   color: #d3ef9b;
 }
 .kiosk-invitation > p {
   color: #c4d3c8;
-  font-size: clamp(15px, 1.3vw, 23px);
+  font-size: clamp(14px, min(1.3vw, 2dvh), 21px);
   max-width: 350px;
-  margin-bottom: 24px;
+  margin-bottom: clamp(12px, 2dvh, 24px);
 }
 .kiosk-qr {
   display: block;
-  width: clamp(180px, 17vw, 310px);
+  width: clamp(144px, min(17vw, 23dvh), 280px);
   max-width: 100%;
   background: white;
   border-radius: 15px;
   padding: 10px;
   transform: rotate(-3deg);
   box-shadow: 9px 10px 0 #d3ef9b;
-  margin-bottom: 30px;
+  margin-bottom: clamp(16px, 2.5dvh, 30px);
 }
 .kiosk-qr svg {
   width: 100%;
@@ -341,6 +342,8 @@
   }
   .kiosk-stage {
     grid-template-columns: 1fr;
+    min-height: auto;
+    flex-shrink: 0;
   }
   .kiosk-invitation {
     align-items: center;
