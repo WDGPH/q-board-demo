@@ -27,6 +27,12 @@ vi.mock("../event.config", () => ({
       moderatorNoteLabel: "Host notes",
       approve: "Publish",
       footerMessage: "",
+      openKiosk: "Launch audience display",
+      kioskHeading: "Community perspectives",
+      kioskClosedHeading: "Thanks for\nsharing your ideas.",
+      kioskQuestionCount: "Community questions: {count}",
+      kioskInvitationEyebrow: "",
+      kioskExit: "Return to moderation",
     },
   },
 }));
@@ -169,6 +175,31 @@ describe("event configuration", () => {
       "Please share a question first.",
     );
     expect(submit).not.toHaveBeenCalled();
+  });
+
+  it("uses kiosk text overrides, count placeholders, line breaks, and fallbacks", async () => {
+    window.history.replaceState({}, "", "/moderator");
+    render(<App />);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Launch audience display" }),
+    );
+    expect(
+      screen.getByRole("heading", { name: "Community perspectives" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /Thanks for\s+sharing your ideas\./ }),
+    ).toHaveTextContent("Thanks for sharing your ideas.");
+    expect(screen.getByText("Community questions: 07")).toBeInTheDocument();
+    expect(
+      screen.queryByText(demoText.kioskInvitationEyebrow),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Return to moderation" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: demoText.kioskFullscreen }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(demoText.kioskClosedText)).toBeInTheDocument();
   });
 });
 

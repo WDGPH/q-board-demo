@@ -39,6 +39,8 @@ const eventConfig: EventConfig = {
   // Override only what you need; omitted/undefined keys keep their defaults.
   // Empty strings are allowed. Text is plain text, not HTML.
   // Use \n for line breaks in attendeeHeading and attendeeAside.
+  // Kiosk invitation/closed headings and empty-state heading/text also support \n.
+  // kioskQuestionCount supports {count}, replaced with the public question count.
   text: {
     //  brandTagline: "YOUR QUESTIONS. OUR NEXT CHAPTER.",
     //  attendeeHeading: "Welcome to our conference.",
@@ -48,6 +50,12 @@ const eventConfig: EventConfig = {
     //  submitQuestion: "Send question",
     //  guidancePanel: "Our hosts will discuss your questions during the Q&A.",
     //  moderatorHeading: "Prepare the Q&A.",
+    //  openKiosk: "Launch audience display",
+    //  kioskHeading: "Questions from our community.",
+    //  kioskInvitationHeading: "Have a question?\nMake it heard.",
+    //  kioskInvitationText: "Scan to ask our speakers or vote for a question.",
+    //  kioskQuestionCount: "{count} community questions",
+    //  kioskScanToJoin: "Scan to take part",
     //  footerMessage: "Thanks for joining us.",
   },
 };

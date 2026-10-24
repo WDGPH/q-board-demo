@@ -11,6 +11,50 @@ export const demoEvent: Event = {
 };
 // Default UI copy. Override individual keys in event.config.ts under text.
 export const demoText = {
+  openKiosk: "Open kiosk",
+  kioskSessionEnded: "Session ended",
+  kioskComingUp: "Coming up",
+  kioskInSession: "In session",
+  kioskConversationSoFar: "The conversation so far",
+  kioskFullscreenUnavailable:
+    "Full screen unavailable. Use your browser’s full screen option.",
+  kioskReconnecting: "Reconnecting · showing last update",
+  kioskUpdating: "Auto-updating · every 10s",
+  kioskQuestionsLabel: "Audience questions",
+  // {count} is replaced with the number of public questions in the selected session.
+  kioskQuestionCount: "{count} questions on the board",
+  kioskHeading: "A room full of curiosity.",
+  kioskSpotlight: "In the spotlight",
+  kioskFromAudience: "From the audience",
+  kioskAnonymousQuestion: "Anonymous question",
+  kioskEmptyHeading: "The next great question\ncould be yours.",
+  kioskEmptyText:
+    "Scan the code. Share your curiosity.\nQuestions appear here after review.",
+  kioskRotationPaused: "Rotation paused",
+  kioskRotationHint: "A new perspective every 16 seconds",
+  kioskConversationHint: "Good questions start better conversations.",
+  kioskPreviousQuestion: "Previous question",
+  kioskResumeRotation: "Resume rotation",
+  kioskPauseRotation: "Pause rotation",
+  kioskNextQuestion: "Next question",
+  kioskInvitationEyebrow: "YOUR PERSPECTIVE BELONGS HERE",
+  kioskInvitationHeading: "What’s on\nyour mind?",
+  kioskClosedHeading: "Keep the\nideas going.",
+  kioskInvitationText:
+    "Ask a question. Vote for the ideas you want to hear more about.",
+  kioskClosedText:
+    "Submissions are closed. Explore the questions and perspectives shared so far.",
+  kioskAttendeeBoardLabel: "Open the attendee question board",
+  kioskScanToJoin: "Scan to join the conversation",
+  kioskScanToExplore: "Scan to explore the board",
+  kioskPrivacy: "Anonymous submissions · Reviewed by moderators",
+  kioskPreview: "LOCAL PREVIEW",
+  kioskLiveQuestions: "LIVE QUESTIONS",
+  kioskSessionLabel: "Kiosk session",
+  kioskAllSessions: "All sessions",
+  kioskEndedOption: "Ended",
+  kioskFullscreen: "Full screen",
+  kioskExit: "Exit kiosk",
   sessionLabel: "Choose a Session",
   generalQuestions: "General questions",
   generalQuestionsDescription:
