@@ -1,5 +1,145 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap");
 
+.ranked-view {
+  min-height: 100dvh;
+  background: #f4f6ef;
+  color: #203b32;
+  overflow-wrap: anywhere;
+}
+.ranked-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px max(16px, calc((100% - 900px) / 2));
+  background: #f4f6eff5;
+  border-bottom: 1px solid #d5dece;
+}
+.ranked-header .button,
+.ranked-card .button {
+  min-height: 48px;
+  font-size: 15px;
+}
+main.ranked-main {
+  width: 100%;
+  max-width: 940px;
+  margin: 0 auto;
+  padding: 28px 20px 64px;
+}
+.ranked-preview,
+.ranked-event,
+.ranked-intro,
+.ranked-updating {
+  margin: 0 0 12px;
+  color: #52634f;
+  line-height: 1.5;
+}
+.ranked-preview {
+  font-size: 13px;
+}
+.ranked-event {
+  font-weight: 600;
+}
+.ranked-main h1 {
+  font-size: clamp(28px, 5vw, 40px);
+  margin-bottom: 12px;
+}
+.ranked-main h1 > span {
+  font-size: 20px;
+  color: #52634f;
+}
+.ranked-updating {
+  font-size: 13px;
+  margin-bottom: 24px;
+}
+.ranked-view .session-select-row select {
+  font-size: 16px;
+  min-height: 48px;
+}
+.ranked-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 18px;
+}
+.ranked-card {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 16px;
+  padding: 24px;
+  background: #fff;
+  border: 1px solid #d5dece;
+  border-radius: 16px;
+}
+.ranked-shortlisted {
+  border-left: 5px solid #587e39;
+}
+.ranked-number {
+  font-size: 25px;
+  font-weight: 700;
+  color: #52634f;
+}
+.ranked-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.ranked-votes {
+  font-size: 15px;
+  color: #52634f;
+}
+.ranked-card h2 {
+  font-family: "DM Sans", sans-serif;
+  font-size: clamp(22px, 3.2vw, 30px);
+  font-weight: 550;
+  line-height: 1.45;
+  margin: 16px 0 22px;
+  white-space: pre-wrap;
+}
+.ranked-note {
+  border-top: 1px solid #e0e6db;
+  padding-top: 14px;
+  margin-bottom: 20px;
+}
+.ranked-note h3 {
+  font-size: 13px;
+  color: #52634f;
+  margin: 0 0 6px;
+}
+.ranked-note p {
+  font-size: 17px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+@media (max-width: 480px) {
+  main.ranked-main {
+    padding: 22px 12px 40px;
+  }
+  .ranked-header {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .ranked-header .button {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+  .ranked-card {
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 10px;
+    padding: 18px 14px;
+  }
+  .ranked-number {
+    font-size: 21px;
+  }
+  .ranked-card .button {
+    width: 100%;
+  }
+}
+
 .kiosk {
   height: 100dvh;
   overflow: auto;
@@ -74,7 +214,7 @@
   max-width: 2000px;
   min-height: 0;
   padding: 0;
-  margin: 0 auto;  
+  margin: 0 auto;
 }
 .kiosk-conversation {
   display: flex;

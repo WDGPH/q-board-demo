@@ -84,6 +84,14 @@ values (
 
 Set `is_active = false` to close an event to attendees. Dates are descriptive; they do not automatically open or close submissions. Event dates are displayed in UTC; submission times use the moderator’s browser timezone. Moderator accounts have access to all events, as scoped for v1.
 
+## Ranked view for panel moderators
+
+Choose **Open ranked view** in the moderator panel, or open `/moderator/ranked` for the configured event and `/moderator/EVENT_SLUG/ranked` for a specific event. Connected deployments require moderator sign-in; local preview grants access. The phone/tablet layout shows large question text, vote totals, private moderator notes, and **Mark answered** controls. Answered, pending, and hidden questions are excluded.
+
+Shortlisted questions always appear before approved questions. Each group is ordered by votes descending, then oldest submission first (question ID breaks remaining ties). Questions update every 10 seconds while visible; **Refresh** updates immediately. Failed refreshes retain the last loaded list and display an error.
+
+With sessions enabled, the view starts with the moderator panel’s selection and includes a session selector. Direct links accept `?session=SESSION_ID`; unknown IDs use the normal scheduled default. `?session=` selects legacy general questions. Session choices persist in the URL and when returning to the moderator panel. Customize copy with the `ranked*` and `openRanked` keys in `event.config.ts`.
+
 ## Projector / kiosk view
 
 In the kiosk's bottom session selector, **All sessions** mixes public questions from every session, including general questions, using the existing vote order and automatic rotation. Each card shows its session title. The QR code links to the event board so attendees can choose a session. This kiosk-only selection keeps the moderator panel's selected session intact. Customize its label with `text.kioskAllSessions`.

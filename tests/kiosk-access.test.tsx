@@ -50,6 +50,26 @@ it("keeps kiosk controls behind moderator authorization", async () => {
   ).not.toBeInTheDocument();
 });
 
+it("protects direct ranked links and removes ranked content when access is revoked", async () => {
+  window.history.replaceState({}, "", "/moderator/ranked");
+  access.allowed = false;
+  const view = render(<App />);
+  expect(
+    await screen.findByRole("button", { name: "Sign in" }),
+  ).toBeInTheDocument();
+  expect(screen.queryByRole("list")).not.toBeInTheDocument();
+  view.unmount();
+  access.allowed = true;
+  render(<App />);
+  expect(await screen.findByRole("list")).toBeInTheDocument();
+  access.allowed = false;
+  fireEvent(window, new Event("online"));
+  expect(
+    await screen.findByRole("button", { name: "Sign in" }),
+  ).toBeInTheDocument();
+  expect(screen.queryByRole("list")).not.toBeInTheDocument();
+});
+
 it("closes the kiosk when a refresh detects revoked moderator access", async () => {
   render(<App />);
   await userEvent.click(

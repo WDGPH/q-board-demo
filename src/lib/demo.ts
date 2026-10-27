@@ -11,6 +11,16 @@ export const demoEvent: Event = {
 };
 // Default UI copy. Override individual keys in event.config.ts under text.
 export const demoText = {
+  openRanked: "Open ranked view",
+  rankedHeading: "Ranked questions",
+  rankedIntro:
+    "Shortlisted first, then approved. Most votes first in each group.",
+  rankedBack: "Moderator panel",
+  rankedListLabel: "Questions in ranked order",
+  rankedEmptyHeading: "No questions ready yet.",
+  rankedEmptyText:
+    "Approve or shortlist questions in the moderator panel to add them here.",
+  rankedUpdating: "Updates every 10s",
   openKiosk: "Open kiosk",
   kioskSessionEnded: "Session ended",
   kioskComingUp: "Coming up",
