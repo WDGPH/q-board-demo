@@ -73,9 +73,7 @@ export function RankedView({
       </header>
       <main className="ranked-main">
         {preview && <p className="ranked-preview">{uiText.previewNotice}</p>}
-        <p className="ranked-event">{event.name}</p>
         <h1>{uiText.rankedHeading}</h1>
-        <p className="ranked-intro">{uiText.rankedIntro}</p>
         <p className="ranked-updating">{uiText.rankedUpdating}</p>
         {error && (
           <div className="connection-error" role="alert">
