@@ -11,6 +11,19 @@ export const demoEvent: Event = {
 };
 // Default UI copy. Override individual keys in event.config.ts under text.
 export const demoText = {
+  openRanked: "Open ranked view",
+  rankedHeading: "Ranked questions",
+  rankedRemaining: "{count} questions remaining",
+  rankedRemainingOne: "{count} question remaining",
+  rankedIntro:
+    "Shortlisted first, then approved, ranked by votes. Answered questions follow in answer order.",
+  unmarkAnswered: "Unmark as answered",
+  rankedBack: "Moderator panel",
+  rankedListLabel: "Questions in ranked order",
+  rankedEmptyHeading: "No questions ready yet.",
+  rankedEmptyText:
+    "Approve or shortlist questions in the moderator panel to add them here.",
+  rankedUpdating: "Updates every 10s",
   openKiosk: "Open kiosk",
   kioskSessionEnded: "Session ended",
   kioskComingUp: "Coming up",
@@ -56,6 +69,7 @@ export const demoText = {
   kioskFullscreen: "Full screen",
   kioskExit: "Exit kiosk",
   sessionLabel: "Choose a Session",
+  sessionDetails: "Session details",
   generalQuestions: "General questions",
   generalQuestionsDescription:
     "Questions submitted before sessions were configured.",
@@ -218,6 +232,11 @@ export function initialDemo(): Question[] {
     vote_count,
     has_voted: false,
     created_at: new Date(Date.UTC(2026, 10, 20, 10, i * 4)).toISOString(),
+    answered_at:
+      status === "answered"
+        ? new Date(Date.UTC(2026, 10, 20, 11, i)).toISOString()
+        : null,
+    answered_from_status: status === "answered" ? "approved" : null,
     moderator_note:
       status === "shortlisted"
         ? "Invite perspectives from both research and practice."

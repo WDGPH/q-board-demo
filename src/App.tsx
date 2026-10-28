@@ -18,6 +18,7 @@ import {
   RefreshCw,
   MessagesSquare,
   Monitor,
+  ListOrdered,
 } from "lucide-react";
 import { supabase, preview, configurationError } from "./lib/supabase";
 import { readDemo, saveDemo } from "./lib/demo";
@@ -34,6 +35,7 @@ import { QuestionCard } from "./components/QuestionCard";
 import { SessionSelector } from "./components/SessionSelector";
 import { ModeratorCard } from "./components/ModeratorCard";
 import { KioskView } from "./components/KioskView";
+import { RankedView } from "./components/RankedView";
 import { statuses, type Event, type Question, type Status } from "./types";
 
 let sessionPromise: Promise<string> | undefined;
@@ -57,6 +59,7 @@ function Board() {
   const location = useLocation();
   const navigate = useNavigate();
   const moderator = location.pathname.startsWith("/moderator");
+  const ranked = moderator && location.pathname.endsWith("/ranked");
   const [event, setEvent] = useState<Event | null>(null);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
     null,
@@ -154,7 +157,7 @@ function Board() {
       setQuestions(readDemo());
       return;
     }
-    if (kiosk) {
+    if (kiosk || ranked) {
       const role = await supabase!.rpc("is_moderator");
       if (role.error) throw role.error;
       if (!role.data) {
@@ -170,7 +173,7 @@ function Board() {
     });
     if (error) throw error;
     setQuestions(data || []);
-  }, [event, moderator, authorized, kiosk]);
+  }, [event, moderator, authorized, kiosk, ranked]);
   useEffect(() => {
     if (!supabase) return;
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -196,7 +199,7 @@ function Board() {
               if (active) setError(uiText.updatesPaused);
             });
       },
-      kiosk ? 10000 : 20000,
+      kiosk || ranked ? 10000 : 20000,
     );
     const resume = () => {
       if (document.visibilityState === "visible")
@@ -214,7 +217,7 @@ function Board() {
       window.removeEventListener("online", resume);
       window.removeEventListener("storage", resume);
     };
-  }, [event, refresh, kiosk]);
+  }, [event, refresh, kiosk, ranked]);
   async function manualRefresh() {
     setRefreshing(true);
     try {
@@ -235,6 +238,26 @@ function Board() {
     ? questions.filter((q) => (q.session_id ?? null) === sessionId)
     : questions;
   const legacyQuestions = questions.some((q) => !q.session_id);
+  // Keep session choices shareable, including the legacy general-question list.
+  useEffect(() => {
+    if (!event) return;
+    const params = new URLSearchParams(location.search);
+    const requested = params.get("session");
+    setSelectedSessionId(
+      moderator && requested === ""
+        ? ""
+        : (event.sessions?.find((s) => s.id === requested)?.id ??
+            defaultSession(event.sessions ?? [])?.id ??
+            null),
+    );
+  }, [event, location.search, moderator]);
+  function selectSession(id: string) {
+    setSelectedSessionId(id);
+    if (!moderator) return;
+    const params = new URLSearchParams(location.search);
+    params.set("session", id);
+    navigate({ search: `?${params}` }, { replace: true });
+  }
 
   async function submit(text: string) {
     if (!event) return;
@@ -314,8 +337,40 @@ function Board() {
   }
   async function update(id: string, status: Status, note: string) {
     if (preview) {
-      const next = readDemo().map((q) =>
-        q.id === id ? { ...q, status, moderator_note: note } : q,
+      const all = readDemo();
+      // Preview samples can be dated ahead of the device clock. Append new
+      // answers after that sample history, just as a live panel would.
+      const answeredAt = new Date(
+        Math.max(
+          Date.now(),
+          ...all
+            .filter((q) => q.status === "answered")
+            .map((q) => Date.parse(q.answered_at ?? q.created_at) + 1)
+            .filter(Number.isFinite),
+        ),
+      ).toISOString();
+      const next = all.map((q) =>
+        q.id === id
+          ? {
+              ...q,
+              status,
+              moderator_note: note,
+              answered_at:
+                status === "answered"
+                  ? q.status === "answered"
+                    ? (q.answered_at ?? answeredAt)
+                    : answeredAt
+                  : null,
+              answered_from_status:
+                status === "answered"
+                  ? q.status === "answered"
+                    ? q.answered_from_status
+                    : q.status === "shortlisted"
+                      ? ("shortlisted" as const)
+                      : ("approved" as const)
+                  : null,
+            }
+          : q,
       );
       saveDemo(next);
       setQuestions(next);
@@ -352,6 +407,25 @@ function Board() {
   }
   const base = slug ? `/e/${slug}` : "/";
   const modLink = slug ? `/moderator/${slug}` : "/moderator";
+  const sessionSearch = sessions.length
+    ? `?${new URLSearchParams({ session: sessionId ?? "" })}`
+    : "";
+  if (ranked && !loading && authorized && event) {
+    return (
+      <RankedView
+        event={event}
+        questions={questions}
+        selectedSessionId={sessionId}
+        onSessionChange={selectSession}
+        moderatorLink={`${modLink}${sessionSearch}`}
+        error={error}
+        refreshing={refreshing}
+        onRefresh={manualRefresh}
+        onUpdate={update}
+        preview={preview}
+      />
+    );
+  }
   const publicQuestions = sessionQuestions.filter((q) =>
     ["approved", "shortlisted", "answered"].includes(q.status),
   );
@@ -504,6 +578,12 @@ function Board() {
                   {moderator ? (
                     <>
                       <span className="eyebrow">{uiText.moderatorEyebrow}</span>
+                      <Link
+                        className="button primary"
+                        to={`${modLink}/ranked${sessionSearch}`}
+                      >
+                        <ListOrdered size={16} /> {uiText.openRanked}
+                      </Link>
                       <button
                         className="button primary"
                         onClick={() => setKiosk(true)}
@@ -565,7 +645,7 @@ function Board() {
               <SessionSelector
                 sessions={sessions}
                 selectedId={sessionId}
-                onChange={setSelectedSessionId}
+                onChange={selectSession}
                 showGeneral={moderator && legacyQuestions}
               />
             )}
@@ -761,6 +841,8 @@ export default function App() {
         <Route path="/e/:slug" element={<Board />} />
         <Route path="/moderator" element={<Board />} />
         <Route path="/moderator/:slug" element={<Board />} />
+        <Route path="/moderator/ranked" element={<Board />} />
+        <Route path="/moderator/:slug/ranked" element={<Board />} />
         <Route
           path="*"
           element={
