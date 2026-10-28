@@ -23,6 +23,9 @@ beforeAll(async () => {
   await db.exec(
     readFileSync("supabase/migrations/202610080001_sessions.sql", "utf8"),
   );
+  await db.exec(
+    readFileSync("supabase/migrations/202610270001_answered_order.sql", "utf8"),
+  );
   await db.query("insert into auth.users(id) values ($1),($2),($3)", [
     attendee,
     other,
@@ -175,6 +178,53 @@ describe.sequential(
       );
       expect(result.rows[0].status).toBe("answered");
       expect(result.rows[0].answered_at).toBeTruthy();
+      const listed = await db.query<{
+        answered_at: string;
+        answered_from_status: string;
+      }>(
+        "select answered_at,answered_from_status from public.list_questions($1,true) where id=$2",
+        [event, question],
+      );
+      expect(listed.rows[0].answered_at).toEqual(result.rows[0].answered_at);
+      expect(listed.rows[0].answered_from_status).toBe("shortlisted");
+      // Editing notes does not move a question in the answer sequence.
+      await db.query(
+        "select public.moderate_question($1,'answered','Updated note')",
+        [question],
+      );
+      expect(
+        (
+          await db.query<{ answered_at: string }>(
+            "select answered_at from public.questions where id=$1",
+            [question],
+          )
+        ).rows[0].answered_at,
+      ).toEqual(result.rows[0].answered_at);
+      await db.query(
+        "select public.moderate_question($1,'shortlisted','Updated note')",
+        [question],
+      );
+      expect(
+        (
+          await db.query(
+            "select status,answered_at from public.questions where id=$1",
+            [question],
+          )
+        ).rows[0],
+      ).toEqual({ status: "shortlisted", answered_at: null });
+      await db.query(
+        "select public.moderate_question($1,'answered','Done again')",
+        [question],
+      );
+      const answeredAgain = (
+        await db.query<{ answered_at: Date }>(
+          "select answered_at from public.questions where id=$1",
+          [question],
+        )
+      ).rows[0].answered_at;
+      expect(new Date(answeredAgain).getTime()).toBeGreaterThan(
+        new Date(result.rows[0].answered_at).getTime(),
+      );
     });
     it("hides moderated questions and prevents voting on them", async () => {
       await db.query("select public.moderate_question($1,'hidden','Private')", [

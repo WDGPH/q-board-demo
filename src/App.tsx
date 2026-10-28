@@ -337,8 +337,40 @@ function Board() {
   }
   async function update(id: string, status: Status, note: string) {
     if (preview) {
-      const next = readDemo().map((q) =>
-        q.id === id ? { ...q, status, moderator_note: note } : q,
+      const all = readDemo();
+      // Preview samples can be dated ahead of the device clock. Append new
+      // answers after that sample history, just as a live panel would.
+      const answeredAt = new Date(
+        Math.max(
+          Date.now(),
+          ...all
+            .filter((q) => q.status === "answered")
+            .map((q) => Date.parse(q.answered_at ?? q.created_at) + 1)
+            .filter(Number.isFinite),
+        ),
+      ).toISOString();
+      const next = all.map((q) =>
+        q.id === id
+          ? {
+              ...q,
+              status,
+              moderator_note: note,
+              answered_at:
+                status === "answered"
+                  ? q.status === "answered"
+                    ? (q.answered_at ?? answeredAt)
+                    : answeredAt
+                  : null,
+              answered_from_status:
+                status === "answered"
+                  ? q.status === "answered"
+                    ? q.answered_from_status
+                    : q.status === "shortlisted"
+                      ? ("shortlisted" as const)
+                      : ("approved" as const)
+                  : null,
+            }
+          : q,
       );
       saveDemo(next);
       setQuestions(next);

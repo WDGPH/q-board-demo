@@ -46,9 +46,11 @@ main.ranked-main {
   font-size: clamp(28px, 5vw, 40px);
   margin-bottom: 12px;
 }
-.ranked-main h1 > span {
-  font-size: 20px;
+.ranked-count {
+  margin: 0 0 16px;
   color: #52634f;
+  font-size: 15px;
+  font-weight: 600;
 }
 .ranked-updating {
   font-size: 13px;
@@ -76,6 +78,14 @@ main.ranked-main {
 }
 .ranked-shortlisted {
   border-left: 5px solid #587e39;
+}
+.ranked-answered {
+  background: #e9ece7;
+  border-left: 5px solid #8a9386;
+  color: #596253;
+}
+.ranked-answered .ranked-note {
+  border-color: #cbd2c6;
 }
 .ranked-number {
   font-size: 25px;

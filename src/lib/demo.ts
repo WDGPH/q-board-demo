@@ -13,8 +13,11 @@ export const demoEvent: Event = {
 export const demoText = {
   openRanked: "Open ranked view",
   rankedHeading: "Ranked questions",
+  rankedRemaining: "{count} questions remaining",
+  rankedRemainingOne: "{count} question remaining",
   rankedIntro:
-    "Shortlisted first, then approved. Most votes first in each group.",
+    "Shortlisted first, then approved, ranked by votes. Answered questions follow in answer order.",
+  unmarkAnswered: "Unmark as answered",
   rankedBack: "Moderator panel",
   rankedListLabel: "Questions in ranked order",
   rankedEmptyHeading: "No questions ready yet.",
@@ -228,6 +231,11 @@ export function initialDemo(): Question[] {
     vote_count,
     has_voted: false,
     created_at: new Date(Date.UTC(2026, 10, 20, 10, i * 4)).toISOString(),
+    answered_at:
+      status === "answered"
+        ? new Date(Date.UTC(2026, 10, 20, 11, i)).toISOString()
+        : null,
+    answered_from_status: status === "answered" ? "approved" : null,
     moderator_note:
       status === "shortlisted"
         ? "Invite perspectives from both research and practice."

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Check, RefreshCw } from "lucide-react";
+import { ArrowLeft, Check, RefreshCw, Undo2 } from "lucide-react";
 import { uiText } from "../lib/event";
 import { SessionSelector } from "./SessionSelector";
 import { StatusBadge } from "./QuestionCard";
@@ -33,17 +33,29 @@ export function RankedView({
   const ranked = questions
     .filter(
       (q) =>
-        (q.status === "shortlisted" || q.status === "approved") &&
+        (q.status === "shortlisted" ||
+          q.status === "approved" ||
+          q.status === "answered") &&
         (!sessions.length || (q.session_id ?? null) === selectedSessionId),
     )
-    .sort(
-      (a, b) =>
+    .sort((a, b) => {
+      if (a.status === "answered" || b.status === "answered") {
+        if (a.status !== b.status) return a.status === "answered" ? 1 : -1;
+        return (
+          Date.parse(a.answered_at ?? a.created_at) -
+            Date.parse(b.answered_at ?? b.created_at) ||
+          a.id.localeCompare(b.id)
+        );
+      }
+      return (
         Number(b.status === "shortlisted") -
           Number(a.status === "shortlisted") ||
         b.vote_count - a.vote_count ||
         Date.parse(a.created_at) - Date.parse(b.created_at) ||
-        a.id.localeCompare(b.id),
-    );
+        a.id.localeCompare(b.id)
+      );
+    });
+  const remaining = ranked.filter((q) => q.status !== "answered").length;
   return (
     <div className="ranked-view">
       <header className="ranked-header">
@@ -62,9 +74,7 @@ export function RankedView({
       <main className="ranked-main">
         {preview && <p className="ranked-preview">{uiText.previewNotice}</p>}
         <p className="ranked-event">{event.name}</p>
-        <h1>
-          {uiText.rankedHeading} <span>{ranked.length}</span>
-        </h1>
+        <h1>{uiText.rankedHeading}</h1>
         <p className="ranked-intro">{uiText.rankedIntro}</p>
         <p className="ranked-updating">{uiText.rankedUpdating}</p>
         {error && (
@@ -80,6 +90,12 @@ export function RankedView({
             showGeneral={questions.some((q) => !q.session_id)}
           />
         )}
+        <p className="ranked-count" role="status">
+          {(remaining === 1
+            ? uiText.rankedRemainingOne
+            : uiText.rankedRemaining
+          ).replace("{count}", String(remaining))}
+        </p>
         {ranked.length ? (
           <ol className="ranked-list" aria-label={uiText.rankedListLabel}>
             {ranked.map((q, index) => (
@@ -117,7 +133,13 @@ function RankedQuestion({
     setBusy(true);
     setError("");
     try {
-      await onUpdate(q.id, "answered", q.moderator_note ?? "");
+      await onUpdate(
+        q.id,
+        q.status === "answered"
+          ? (q.answered_from_status ?? "approved")
+          : "answered",
+        q.moderator_note ?? "",
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : uiText.saveFailed);
     } finally {
@@ -126,7 +148,7 @@ function RankedQuestion({
   }
   return (
     <li
-      className={`ranked-card ${q.status === "shortlisted" ? "ranked-shortlisted" : ""}`}
+      className={`ranked-card ${q.status === "shortlisted" ? "ranked-shortlisted" : q.status === "answered" ? "ranked-answered" : ""}`}
     >
       <span className="ranked-number" aria-hidden="true">
         {rank}
@@ -146,7 +168,10 @@ function RankedQuestion({
           </div>
         )}
         <button className="button secondary" disabled={busy} onClick={answer}>
-          <Check size={18} /> {uiText.markAnswered}
+          {q.status === "answered" ? <Undo2 size={18} /> : <Check size={18} />}
+          {q.status === "answered"
+            ? uiText.unmarkAnswered
+            : uiText.markAnswered}
         </button>
         {error && (
           <p className="error" role="alert">

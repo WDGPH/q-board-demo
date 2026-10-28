@@ -13,13 +13,29 @@ test("ranked view supports direct links, live ranking, and readable phone/tablet
   await page.getByRole("link", { name: "Open ranked view" }).click();
   await expect(page).toHaveURL(/\/moderator\/ranked$/);
   const cards = page.locator(".ranked-card");
-  await expect(cards).toHaveCount(6);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Ranked questions",
+  );
+  await expect(page.getByRole("status")).toHaveText("6 questions remaining");
+  await expect(cards).toHaveCount(7);
   await expect(cards.nth(1)).toContainText("Where should we draw the line");
   await expect(cards.nth(2)).toContainText("meaningful community involvement");
   await page.reload();
-  await expect(cards).toHaveCount(6);
+  await expect(cards).toHaveCount(7);
   await cards.first().getByRole("button", { name: "Mark answered" }).click();
-  await expect(cards).toHaveCount(5);
+  await expect(cards).toHaveCount(7);
+  await expect(cards.last()).toContainText("How do we make sure AI tools");
+  await expect(cards.last()).toHaveClass(/ranked-answered/);
+  await expect(page.getByRole("status")).toHaveText("5 questions remaining");
+  await page.reload();
+  await expect(cards.last()).toContainText("How do we make sure AI tools");
+  await cards
+    .last()
+    .getByRole("button", { name: "Unmark as answered" })
+    .click();
+  await expect(cards.first()).toContainText("How do we make sure AI tools");
+  await expect(page.getByRole("status")).toHaveText("6 questions remaining");
+  await cards.first().getByRole("button", { name: "Mark answered" }).click();
   await expect(cards.first()).toContainText("Where should we draw the line");
   await page.evaluate(() => {
     const questions = JSON.parse(localStorage.getItem("q-board-preview-v1")!);

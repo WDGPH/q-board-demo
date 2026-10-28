@@ -30,6 +30,8 @@ export type Question = {
   question_text: string;
   status: Status;
   created_at: string;
+  answered_at?: string | null;
+  answered_from_status?: "approved" | "shortlisted" | null;
   vote_count: number;
   has_voted: boolean;
   moderator_note: string | null;

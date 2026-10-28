@@ -47,9 +47,13 @@ it("opens directly, ranks shortlist before higher-voted approved questions, and 
   const texts = within(list)
     .getAllByRole("heading", { level: 2 })
     .map((node) => node.textContent);
+  expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+    /^Ranked questions$/,
+  );
+  expect(screen.getByRole("status")).toHaveTextContent("4 questions remaining");
   const samples = initialDemo();
   expect(texts).toEqual(
-    [samples[0], samples[3], samples[1], samples[2]].map(
+    [samples[0], samples[3], samples[1], samples[2], samples[5]].map(
       (q) => q.question_text,
     ),
   );
@@ -59,11 +63,55 @@ it("opens directly, ranks shortlist before higher-voted approved questions, and 
       name: "Mark answered",
     }),
   );
-  expect(screen.queryByText(samples[0].question_text)).not.toBeInTheDocument();
+  expect(
+    within(list).getAllByRole("heading", { level: 2 }).at(-1),
+  ).toHaveTextContent(samples[0].question_text);
+  expect(screen.getByText(samples[0].question_text).closest("li")).toHaveClass(
+    "ranked-answered",
+  );
   expect(readDemo()[0]).toMatchObject({
     status: "answered",
     moderator_note: samples[0].moderator_note,
+    answered_from_status: "shortlisted",
   });
+  expect(screen.getByRole("status")).toHaveTextContent("3 questions remaining");
+});
+
+it("keeps answer order across reloads and restores the original shortlist when unmarked", async () => {
+  const user = userEvent.setup();
+  const view = render(<App />);
+  const list = await screen.findByRole("list");
+  async function toggle(id: number, label: string) {
+    const card = screen
+      .getByText(initialDemo()[id].question_text)
+      .closest("li")!;
+    await user.click(within(card).getByRole("button", { name: label }));
+  }
+  await toggle(3, "Mark answered");
+  await toggle(0, "Mark answered");
+  expect(
+    within(list)
+      .getAllByRole("heading", { level: 2 })
+      .slice(-3)
+      .map((node) => node.textContent),
+  ).toEqual([5, 3, 0].map((i) => initialDemo()[i].question_text));
+  view.unmount();
+  render(<App />);
+  const reloaded = await screen.findByRole("list");
+  expect(
+    within(reloaded).getAllByRole("heading", { level: 2 }).at(-1),
+  ).toHaveTextContent(initialDemo()[0].question_text);
+  await toggle(0, "Unmark as answered");
+  expect(screen.getByRole("status")).toHaveTextContent("3 questions remaining");
+  expect(
+    within(reloaded).getAllByRole("heading", { level: 2 })[0],
+  ).toHaveTextContent(initialDemo()[0].question_text);
+  expect(readDemo()[0]).toMatchObject({
+    status: "shortlisted",
+    answered_at: null,
+  });
+  await toggle(5, "Unmark as answered");
+  expect(readDemo()[5].status).toBe("approved");
 });
 
 it("preserves selected sessions through dashboard links, direct reloads, and general questions", async () => {
@@ -83,6 +131,7 @@ it("preserves selected sessions through dashboard links, direct reloads, and gen
   expect(
     await screen.findByText(initialDemo()[6].question_text),
   ).toBeInTheDocument();
+  expect(screen.getByRole("status")).toHaveTextContent("1 question remaining");
   await user.click(
     screen.getByText("Closing panel", { selector: ".session-summary-title" }),
   );
@@ -109,11 +158,12 @@ it("preserves selected sessions through dashboard links, direct reloads, and gen
 it("handles empty sessions and live status/vote changes", async () => {
   render(<App />);
   await screen.findByRole("list");
-  saveDemo(readDemo().map((q) => ({ ...q, status: "answered" })));
+  saveDemo(readDemo().map((q) => ({ ...q, status: "hidden" })));
   fireEvent(window, new Event("storage"));
   expect(
     await screen.findByRole("heading", { name: "No questions ready yet." }),
   ).toBeInTheDocument();
+  expect(screen.getByRole("status")).toHaveTextContent("0 questions remaining");
   saveDemo(
     initialDemo().map((q) => ({
       ...q,
