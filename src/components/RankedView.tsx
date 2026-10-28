@@ -84,6 +84,7 @@ export function RankedView({
         )}
         {sessions.length > 0 && (
           <SessionSelector
+            compact
             sessions={sessions}
             selectedId={selectedSessionId}
             onChange={onSessionChange}

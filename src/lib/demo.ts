@@ -69,6 +69,7 @@ export const demoText = {
   kioskFullscreen: "Full screen",
   kioskExit: "Exit kiosk",
   sessionLabel: "Choose a Session",
+  sessionDetails: "Session details",
   generalQuestions: "General questions",
   generalQuestionsDescription:
     "Questions submitted before sessions were configured.",

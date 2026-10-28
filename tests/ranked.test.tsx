@@ -132,14 +132,22 @@ it("preserves selected sessions through dashboard links, direct reloads, and gen
     await screen.findByText(initialDemo()[6].question_text),
   ).toBeInTheDocument();
   expect(screen.getByRole("status")).toHaveTextContent("1 question remaining");
-  await user.click(
-    screen.getByText("Closing panel", { selector: ".session-summary-title" }),
-  );
+  expect(
+    screen.getByRole("combobox", { name: "Choose a Session" }),
+  ).toBeVisible();
+  const details = screen.getByRole("button", { name: "Session details" });
+  expect(details).toHaveAttribute("aria-expanded", "false");
+  await user.click(details);
+  expect(screen.getByRole("heading", { name: "Closing panel" })).toBeVisible();
   await user.selectOptions(
     screen.getByRole("combobox", { name: "Choose a Session" }),
     "",
   );
   expect(window.location.search).toBe("?session=");
+  expect(details).toHaveAttribute("aria-expanded", "false");
+  expect(
+    screen.queryByRole("heading", { name: "General questions" }),
+  ).not.toBeInTheDocument();
   expect(screen.getByText(initialDemo()[4].question_text)).toBeInTheDocument();
   expect(
     screen.queryByText(initialDemo()[6].question_text),
