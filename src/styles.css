@@ -712,6 +712,11 @@ main {
   color: #6d7a6e;
   font-size: 12px;
 }
+.hero-aside > .button {
+  align-self: stretch;
+  height: 44px;
+  flex-shrink: 0;
+}
 .hero-symbol {
   position: relative;
   display: grid;
