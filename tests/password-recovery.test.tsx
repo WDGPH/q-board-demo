@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../src/App";
 import { demoEvent, initialDemo } from "../src/lib/demo";
 
@@ -10,6 +10,7 @@ const auth = vi.hoisted(() => ({
   signInAnonymously: vi.fn(),
   signInWithPassword: vi.fn(),
   resetPasswordForEmail: vi.fn(),
+  exchangeCodeForSession: vi.fn(),
   updateUser: vi.fn(),
   signOut: vi.fn(),
 }));
@@ -36,7 +37,13 @@ vi.mock("../src/lib/supabase", () => {
   };
 });
 
-const recoverySession = { user: { id: "moderator-user" } };
+const recoverySession = {
+  user: {
+    id: "moderator-user",
+    email: "moderator@example.com",
+    is_anonymous: false,
+  },
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -57,10 +64,15 @@ beforeEach(() => {
     return { error: null };
   });
   auth.resetPasswordForEmail.mockResolvedValue({ error: null });
+  auth.exchangeCodeForSession.mockResolvedValue({
+    data: { session: null, user: null },
+    error: new Error("Invalid recovery code"),
+  });
   auth.updateUser.mockResolvedValue({ error: null });
   auth.signOut.mockResolvedValue({ error: null });
   window.history.replaceState({}, "", "/");
 });
+afterEach(() => vi.useRealTimers());
 
 describe("moderator password recovery", () => {
   it("requests reset with the dedicated route and neutral confirmation", async () => {
@@ -123,6 +135,66 @@ describe("moderator password recovery", () => {
     expect(await screen.findByLabelText("New password")).toBeInTheDocument();
   });
 
+  it("waits for PASSWORD_RECOVERY instead of rejecting an existing anonymous session", async () => {
+    let authListener:
+      | ((event: string, session: typeof recoverySession | null) => void)
+      | undefined;
+    auth.onAuthStateChange.mockImplementation((callback) => {
+      authListener = callback;
+      return { data: { subscription: { unsubscribe: vi.fn() } } };
+    });
+    auth.getSession.mockResolvedValue({
+      data: {
+        session: {
+          user: { id: "attendee-user", is_anonymous: true },
+        },
+      },
+      error: null,
+    });
+    window.history.replaceState(
+      {},
+      "",
+      "/reset-password#access_token=recovery-token&refresh_token=refresh-token&type=recovery",
+    );
+    render(<App />);
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Checking your password reset link…",
+    );
+    expect(
+      screen.queryByText(
+        "This reset session cannot change a password. Request a new reset link and open it directly.",
+      ),
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      authListener!("PASSWORD_RECOVERY", recoverySession);
+    });
+
+    expect(await screen.findByLabelText("New password")).toBeInTheDocument();
+  });
+
+  it("uses the PKCE code exchange if automatic URL detection did not establish recovery", async () => {
+    auth.getSession.mockResolvedValue({
+      data: {
+        session: {
+          user: { id: "attendee-user", is_anonymous: true },
+        },
+      },
+      error: null,
+    });
+    auth.exchangeCodeForSession.mockResolvedValue({
+      data: { session: recoverySession, user: recoverySession.user },
+      error: null,
+    });
+    window.history.replaceState({}, "", "/reset-password?code=pkce-code");
+    render(<App />);
+
+    expect(await screen.findByLabelText("New password")).toBeInTheDocument();
+    expect(auth.exchangeCodeForSession).toHaveBeenCalledOnce();
+    expect(auth.exchangeCodeForSession).toHaveBeenCalledWith("pkce-code");
+  });
+
   it("rejects mismatched passwords without calling Supabase", async () => {
     auth.getSession.mockResolvedValue({
       data: { session: recoverySession },
@@ -149,12 +221,35 @@ describe("moderator password recovery", () => {
   });
 
   it("updates the password, signs out, and offers moderator login", async () => {
+    let authListener:
+      | ((event: string, session: typeof recoverySession | null) => void)
+      | undefined;
+    auth.onAuthStateChange.mockImplementation((callback) => {
+      authListener = callback;
+      return { data: { subscription: { unsubscribe: vi.fn() } } };
+    });
+    auth.getSession.mockResolvedValueOnce({
+      data: {
+        session: {
+          user: { id: "attendee-user", is_anonymous: true },
+        },
+      },
+      error: null,
+    });
     auth.getSession.mockResolvedValue({
       data: { session: recoverySession },
       error: null,
     });
-    window.history.replaceState({}, "", "/reset-password");
+    window.history.replaceState(
+      {},
+      "",
+      "/reset-password#access_token=recovery-token&refresh_token=refresh-token&type=recovery",
+    );
     render(<App />);
+    await waitFor(() => expect(authListener).toBeDefined());
+    await act(async () => {
+      authListener!("PASSWORD_RECOVERY", recoverySession);
+    });
     await userEvent.type(
       await screen.findByLabelText("New password"),
       "new-password",
@@ -178,7 +273,43 @@ describe("moderator password recovery", () => {
   });
 
   it("does not offer a password form for an invalid or expired link", async () => {
+    vi.useFakeTimers();
     window.history.replaceState({}, "", "/reset-password");
+    render(<App />);
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Checking your password reset link…",
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(8000);
+    });
+    expect(
+      screen.getByText("This password reset link is invalid or has expired."),
+    ).toBeInTheDocument();
+    expect(auth.signInAnonymously).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText("New password")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Return to moderator login" }),
+    ).toHaveAttribute("href", "/moderator");
+  });
+
+  it("shows expired-link feedback for Supabase callback errors instead of the anonymous-session error", async () => {
+    auth.getSession.mockResolvedValue({
+      data: {
+        session: {
+          user: {
+            id: "attendee-user",
+            is_anonymous: true,
+          },
+        },
+      },
+      error: null,
+    });
+    window.history.replaceState(
+      {},
+      "",
+      "/reset-password#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired",
+    );
     render(<App />);
 
     expect(
@@ -186,10 +317,76 @@ describe("moderator password recovery", () => {
         "This password reset link is invalid or has expired.",
       ),
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText("New password")).not.toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Return to moderator login" }),
-    ).toHaveAttribute("href", "/moderator");
+      screen.queryByText(
+        "This reset session cannot change a password. Request a new reset link and open it directly.",
+      ),
+    ).not.toBeInTheDocument();
+    expect(auth.updateUser).not.toHaveBeenCalled();
+  });
+
+  it("rejects an anonymous session without attempting a password update", async () => {
+    vi.useFakeTimers();
+    auth.getSession.mockResolvedValue({
+      data: {
+        session: {
+          user: {
+            id: "attendee-user",
+            is_anonymous: true,
+          },
+        },
+      },
+      error: null,
+    });
+    window.history.replaceState({}, "", "/reset-password");
+    render(<App />);
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Checking your password reset link…",
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(8000);
+    });
+    expect(
+      screen.getByText(
+        "This reset session cannot change a password. Request a new reset link and open it directly.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("New password")).not.toBeInTheDocument();
+    expect(auth.updateUser).not.toHaveBeenCalled();
+    expect(auth.signInAnonymously).not.toHaveBeenCalled();
+  });
+
+  it("does not start attendee bootstrap if navigation reaches reset during session lookup", async () => {
+    let resolveSession!: (result: {
+      data: { session: null };
+      error: null;
+    }) => void;
+    auth.getSession.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSession = resolve;
+        }),
+    );
+    auth.getSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+    render(<App />);
+    await waitFor(() => expect(auth.getSession).toHaveBeenCalledOnce());
+
+    await act(async () => {
+      window.history.pushState({}, "", "/reset-password");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Checking your password reset link…",
+    );
+    await act(async () => {
+      resolveSession({ data: { session: null }, error: null });
+    });
+
+    expect(auth.signInAnonymously).not.toHaveBeenCalled();
   });
 });
 

@@ -39,14 +39,16 @@ import { PasswordRecovery } from "./components/PasswordRecovery";
 import { RankedView } from "./components/RankedView";
 import { statuses, type Event, type Question, type Status } from "./types";
 
-let sessionPromise: Promise<string> | undefined;
-async function ensureSession(): Promise<string> {
+let sessionPromise: Promise<string | null> | undefined;
+async function ensureSession(): Promise<string | null> {
+  if (window.location.pathname === "/reset-password") return null;
   if (!supabase) return "preview";
   if (!sessionPromise)
     sessionPromise = (async () => {
       const { data, error } = await supabase!.auth.getSession();
       if (error) throw error;
       if (data.session) return data.session.user.id;
+      if (window.location.pathname === "/reset-password") return null;
       const result = await supabase!.auth.signInAnonymously();
       if (result.error) throw result.error;
       return result.data.user!.id;
@@ -116,6 +118,7 @@ function Board() {
         return;
       }
       const id = await ensureSession();
+      if (!id) return;
       const role = await supabase!.rpc("is_moderator");
       if (role.error) throw role.error;
       let query = supabase!.from("events").select("*");

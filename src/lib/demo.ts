@@ -100,6 +100,8 @@ export const demoText = {
   resetCheckingLink: "Checking your password reset link…",
   resetInvalidHeading: "Reset link unavailable",
   resetInvalidMessage: "This password reset link is invalid or has expired.",
+  resetAnonymousSessionMessage:
+    "This reset session cannot change a password. Request a new reset link and open it directly.",
   resetRequestAnother: "Return to moderator login",
   resetHeading: "Choose a new password",
   resetIntro: "Enter and confirm your new password to continue.",

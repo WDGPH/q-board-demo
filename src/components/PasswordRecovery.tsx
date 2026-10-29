@@ -6,12 +6,15 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import type { User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import { uiText } from "../lib/event";
 
 export function PasswordRecovery() {
-  const [checking, setChecking] = useState(true);
-  const [hasRecoverySession, setHasRecoverySession] = useState(false);
+  const [recoveryStatus, setRecoveryStatus] = useState<
+    "checking" | "ready" | "anonymous" | "invalid"
+  >("checking");
+  const [recoveryUserId, setRecoveryUserId] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -21,32 +24,129 @@ export function PasswordRecovery() {
 
   useEffect(() => {
     let active = true;
+    let recoveryEventReceived = false;
+    let sessionWasAnonymous = false;
+    let exchangeAttempted = false;
+    const url = new URL(window.location.href);
+    const hashParams = new URLSearchParams(url.hash.replace(/^#/, ""));
+    const code = url.searchParams.get("code");
+    const hasCallbackError =
+      hashParams.has("error") || hashParams.has("error_code");
+    const hasRecoveryCallback =
+      Boolean(code) ||
+      hashParams.get("type") === "recovery" ||
+      Boolean(
+        hashParams.get("access_token") && hashParams.get("refresh_token"),
+      );
+
+    const acceptRecoveryUser = (user: User) => {
+      if (user.is_anonymous === true) {
+        setRecoveryUserId(null);
+        sessionWasAnonymous = true;
+        setRecoveryStatus("anonymous");
+      } else if (user.email) {
+        setRecoveryUserId(user.id);
+        setRecoveryStatus("ready");
+      } else {
+        setRecoveryUserId(null);
+        setRecoveryStatus("invalid");
+      }
+    };
+
     if (!supabase) {
-      setChecking(false);
+      setRecoveryStatus("invalid");
       return;
     }
 
+    const timeout = window.setTimeout(() => {
+      if (!active || recoveryEventReceived) return;
+      setRecoveryStatus(
+        hasRecoveryCallback
+          ? "invalid"
+          : sessionWasAnonymous
+            ? "anonymous"
+            : "invalid",
+      );
+    }, 8000);
+
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (active && event === "PASSWORD_RECOVERY" && session) {
-        setHasRecoverySession(true);
+        recoveryEventReceived = true;
+        acceptRecoveryUser(session.user);
+        window.clearTimeout(timeout);
       }
     });
 
-    void supabase.auth
-      .getSession()
-      .then(({ data: sessionData, error: sessionError }) => {
+    if (hasCallbackError) {
+      window.clearTimeout(timeout);
+      setRecoveryStatus("invalid");
+      return () => {
+        active = false;
+        data.subscription.unsubscribe();
+      };
+    }
+
+    const processRecovery = async () => {
+      try {
+        const { data: sessionData, error: sessionError } =
+          await supabase!.auth.getSession();
         if (sessionError) throw sessionError;
-        if (active && sessionData.session) setHasRecoverySession(true);
-      })
-      .catch((sessionError: unknown) => {
+        if (!active || recoveryEventReceived) return;
+
+        const initialUser = sessionData.session?.user;
+        if (
+          initialUser &&
+          initialUser.is_anonymous === false &&
+          initialUser.email
+        ) {
+          acceptRecoveryUser(initialUser);
+          window.clearTimeout(timeout);
+          return;
+        }
+
+        if (initialUser?.is_anonymous === true) sessionWasAnonymous = true;
+
+        if (code && hasRecoveryCallback && !exchangeAttempted) {
+          exchangeAttempted = true;
+          const { data: exchangeData, error: exchangeError } =
+            await supabase!.auth.exchangeCodeForSession(code);
+          if (exchangeError) {
+            if (import.meta.env.DEV) console.error(exchangeError);
+          } else if (active && !recoveryEventReceived && exchangeData.session) {
+            recoveryEventReceived = true;
+            acceptRecoveryUser(exchangeData.session.user);
+            window.clearTimeout(timeout);
+          }
+        }
+      } catch (sessionError) {
         if (import.meta.env.DEV) console.error(sessionError);
-      })
-      .finally(() => {
-        if (active) setChecking(false);
-      });
+        if (active && !recoveryEventReceived && code && !exchangeAttempted) {
+          exchangeAttempted = true;
+          try {
+            const { data: exchangeData, error: exchangeError } =
+              await supabase!.auth.exchangeCodeForSession(code);
+            if (exchangeError) {
+              if (import.meta.env.DEV) console.error(exchangeError);
+            } else if (
+              active &&
+              !recoveryEventReceived &&
+              exchangeData.session
+            ) {
+              recoveryEventReceived = true;
+              acceptRecoveryUser(exchangeData.session.user);
+              window.clearTimeout(timeout);
+            }
+          } catch (exchangeError) {
+            if (import.meta.env.DEV) console.error(exchangeError);
+          }
+        }
+      }
+    };
+    void processRecovery();
 
     return () => {
       active = false;
+      window.clearTimeout(timeout);
       data.subscription.unsubscribe();
     };
   }, []);
@@ -86,6 +186,22 @@ export function PasswordRecovery() {
 
     setBusy(true);
     try {
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      const user = sessionData.session?.user;
+      if (
+        !user ||
+        user.id !== recoveryUserId ||
+        user.is_anonymous === true ||
+        !user.email
+      ) {
+        setRecoveryUserId(null);
+        setRecoveryStatus(
+          user?.is_anonymous === true ? "anonymous" : "invalid",
+        );
+        return;
+      }
       const { error: updateError } = await supabase.auth.updateUser({
         password: newPassword,
       });
@@ -123,12 +239,24 @@ export function PasswordRecovery() {
             <LockKeyhole />
           </span>
           <div className="eyebrow">{uiText.organizersEyebrow}</div>
-          {checking ? (
+          {recoveryStatus === "checking" ? (
             <p role="status">{uiText.resetCheckingLink}</p>
-          ) : !hasRecoverySession ? (
+          ) : recoveryStatus === "invalid" ? (
             <>
               <h1>{uiText.resetInvalidHeading}</h1>
               <p role="alert">{uiText.resetInvalidMessage}</p>
+              <Link
+                className="button primary reset-link-button"
+                to="/moderator"
+              >
+                {uiText.resetRequestAnother}
+                <ArrowUpRight size={17} />
+              </Link>
+            </>
+          ) : recoveryStatus === "anonymous" ? (
+            <>
+              <h1>{uiText.resetInvalidHeading}</h1>
+              <p role="alert">{uiText.resetAnonymousSessionMessage}</p>
               <Link
                 className="button primary reset-link-button"
                 to="/moderator"
