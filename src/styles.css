@@ -1153,6 +1153,13 @@ textarea::placeholder {
 .login-panel .button {
   margin-top: 15px;
 }
+.reset-link-button {
+  margin-top: 15px;
+  text-decoration: none;
+}
+.login-panel form .success {
+  line-height: 1.6;
+}
 .text-link {
   font-size: 12px;
   text-decoration: underline;

@@ -27,16 +27,17 @@ Before the first browser test, run `npx playwright install chromium`. Browser te
 
 1. Create a Supabase project.
 2. Under **Authentication → Providers / Sign In**, enable anonymous sign-ins. Enable email/password authentication for moderators. Disable public email sign-ups once you have created your moderator accounts; anonymous sign-ins are a separate setting.
-3. Execute all files in [supabase/migrations](supabase/migrations) in filename order in the SQL editor as the database owner, once per database. Keep subsequent schema changes in new migration files. The SQL is also compatible with the Supabase CLI migration workflow.
-4. In a **development project only**, execute [seed.sql](supabase/seed.sql). It creates an event, 10 questions across all statuses, six synthetic identities with no login credentials, and sample votes. It is safe to rerun. For production, create an empty event using the SQL below instead.
-5. Create at least two email/password users using the Auth dashboard. Confirm their emails through the dashboard, then add their UUIDs as moderators:
+3. Under **Authentication → URL Configuration**, add your production reset route to the allowed redirect URLs: `https://YOUR-DOMAIN/reset-password`. If you test password resets from preview deployments, add each preview reset URL (or an appropriately scoped preview URL pattern) to the allowed redirect URLs too.
+4. Execute all files in [supabase/migrations](supabase/migrations) in filename order in the SQL editor as the database owner, once per database. Keep subsequent schema changes in new migration files. The SQL is also compatible with the Supabase CLI migration workflow.
+5. In a **development project only**, execute [seed.sql](supabase/seed.sql). It creates an event, 10 questions across all statuses, six synthetic identities with no login credentials, and sample votes. It is safe to rerun. For production, create an empty event using the SQL below instead.
+6. Create at least two email/password users using the Auth dashboard. Confirm their emails through the dashboard, then add their UUIDs as moderators:
 
    ```sql
    insert into public.moderator_users(user_id)
    values ('FIRST_AUTH_USER_UUID'), ('SECOND_AUTH_USER_UUID');
    ```
 
-6. Copy the project URL and public anon key into `.env`:
+7. Copy the project URL and public anon key into `.env`:
 
    ```dotenv
    VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
@@ -44,7 +45,7 @@ Before the first browser test, run `npx playwright install chromium`. Browser te
    ```
 
    The frontend must never contain a service-role/secret key. Environment files are ignored by Git. Restart Vite after changing environment variables.
-7. Open `/` to create an anonymous attendee session. Open `/moderator` to sign in with a provisioned moderator account.
+8. Open `/` to create an anonymous attendee session. Open `/moderator` to sign in with a provisioned moderator account.
 
 An anonymous attendee’s identity persists in browser storage. Clearing it, using private browsing, or changing browsers creates another identity. The five-question cap is per identity per event, not proof of a unique human. Supabase’s anonymous-auth abuse controls can be configured by the organizer if needed.
 
