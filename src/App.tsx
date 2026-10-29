@@ -35,17 +35,20 @@ import { QuestionCard } from "./components/QuestionCard";
 import { SessionSelector } from "./components/SessionSelector";
 import { ModeratorCard } from "./components/ModeratorCard";
 import { KioskView } from "./components/KioskView";
+import { PasswordRecovery } from "./components/PasswordRecovery";
 import { RankedView } from "./components/RankedView";
 import { statuses, type Event, type Question, type Status } from "./types";
 
-let sessionPromise: Promise<string> | undefined;
-async function ensureSession(): Promise<string> {
+let sessionPromise: Promise<string | null> | undefined;
+async function ensureSession(): Promise<string | null> {
+  if (window.location.pathname === "/reset-password") return null;
   if (!supabase) return "preview";
   if (!sessionPromise)
     sessionPromise = (async () => {
       const { data, error } = await supabase!.auth.getSession();
       if (error) throw error;
       if (data.session) return data.session.user.id;
+      if (window.location.pathname === "/reset-password") return null;
       const result = await supabase!.auth.signInAnonymously();
       if (result.error) throw result.error;
       return result.data.user!.id;
@@ -79,6 +82,9 @@ function Board() {
   const [password, setPassword] = useState("");
   const [loginBusy, setLoginBusy] = useState(false);
   const [loginError, setLoginError] = useState("");
+  const [requestingReset, setRequestingReset] = useState(false);
+  const [resetRequestBusy, setResetRequestBusy] = useState(false);
+  const [resetRequestMessage, setResetRequestMessage] = useState("");
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -112,6 +118,7 @@ function Board() {
         return;
       }
       const id = await ensureSession();
+      if (!id) return;
       const role = await supabase!.rpc("is_moderator");
       if (role.error) throw role.error;
       let query = supabase!.from("events").select("*");
@@ -405,6 +412,25 @@ function Board() {
       setLoginBusy(false);
     }
   }
+  async function requestPasswordReset(e: React.FormEvent) {
+    e.preventDefault();
+    setResetRequestBusy(true);
+    setResetRequestMessage("");
+    try {
+      if (supabase) {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error && import.meta.env.DEV) console.error(error);
+      }
+      setResetRequestMessage(uiText.resetRequestConfirmation);
+    } catch (error) {
+      if (import.meta.env.DEV) console.error(error);
+      setResetRequestMessage(uiText.resetRequestConfirmation);
+    } finally {
+      setResetRequestBusy(false);
+    }
+  }
   const base = slug ? `/e/${slug}` : "/";
   const modLink = slug ? `/moderator/${slug}` : "/moderator";
   const sessionSearch = sessions.length
@@ -512,38 +538,90 @@ function Board() {
               <LockKeyhole />
             </span>
             <div className="eyebrow">{uiText.organizersEyebrow}</div>
-            <h1>{uiText.moderatorAccess}</h1>
-            <p>{uiText.signInIntro}</p>
-            <form onSubmit={login}>
-              <label htmlFor="email">{uiText.emailLabel}</label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="username"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <label htmlFor="password">{uiText.passwordLabel}</label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-              <button className="button primary" disabled={loginBusy}>
-                {loginBusy ? uiText.signingIn : uiText.signIn}
-                <ArrowUpRight size={17} />
-              </button>
-              <div className="error" role="alert">
-                {loginError}
-              </div>
-            </form>
-            <Link className="text-link" to={base}>
-              {uiText.backToBoard}
-            </Link>
+            {requestingReset ? (
+              <>
+                <h1>{uiText.resetRequestHeading}</h1>
+                <p>{uiText.resetRequestIntro}</p>
+                <form
+                  onSubmit={requestPasswordReset}
+                  onChange={() => setResetRequestMessage("")}
+                >
+                  <label htmlFor="reset-email">{uiText.emailLabel}</label>
+                  <input
+                    id="reset-email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                  <button
+                    className="button primary"
+                    disabled={resetRequestBusy}
+                  >
+                    {resetRequestBusy
+                      ? uiText.resetRequestSending
+                      : uiText.resetRequestAction}
+                  </button>
+                  <div className="success" role="status">
+                    {resetRequestMessage}
+                  </div>
+                </form>
+                <button
+                  className="text-link"
+                  onClick={() => {
+                    setRequestingReset(false);
+                    setResetRequestMessage("");
+                  }}
+                >
+                  {uiText.backToSignIn}
+                </button>
+              </>
+            ) : (
+              <>
+                <h1>{uiText.moderatorAccess}</h1>
+                <p>{uiText.signInIntro}</p>
+                <form onSubmit={login}>
+                  <label htmlFor="email">{uiText.emailLabel}</label>
+                  <input
+                    id="email"
+                    type="email"
+                    autoComplete="username"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                  <label htmlFor="password">{uiText.passwordLabel}</label>
+                  <input
+                    id="password"
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <button className="button primary" disabled={loginBusy}>
+                    {loginBusy ? uiText.signingIn : uiText.signIn}
+                    <ArrowUpRight size={17} />
+                  </button>
+                  <div className="error" role="alert">
+                    {loginError}
+                  </div>
+                </form>
+                <button
+                  className="text-link"
+                  onClick={() => {
+                    setRequestingReset(true);
+                    setResetRequestMessage("");
+                  }}
+                >
+                  {uiText.forgotPassword}
+                </button>
+                <Link className="text-link" to={base}>
+                  {uiText.backToBoard}
+                </Link>
+              </>
+            )}
           </section>
         ) : (
           <>
@@ -841,6 +919,7 @@ export default function App() {
         <Route path="/e/:slug" element={<Board />} />
         <Route path="/moderator" element={<Board />} />
         <Route path="/moderator/:slug" element={<Board />} />
+        <Route path="/reset-password" element={<PasswordRecovery />} />
         <Route path="/moderator/ranked" element={<Board />} />
         <Route path="/moderator/:slug/ranked" element={<Board />} />
         <Route
