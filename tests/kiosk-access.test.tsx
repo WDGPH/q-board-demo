@@ -101,13 +101,14 @@ it("lets an authorized moderator change their password", async () => {
   expect(
     await screen.findByRole("heading", { name: "Change your password" }),
   ).toBeInTheDocument();
+  expect(screen.getByRole("dialog")).toHaveAttribute("aria-modal", "true");
   await userEvent.type(screen.getByLabelText("New password"), "new-password");
   await userEvent.type(
     screen.getByLabelText("Confirm new password"),
     "different-password",
   );
   await userEvent.click(screen.getByRole("button", { name: "Update password" }));
-  expect(screen.getByRole("alert")).toHaveTextContent("do not match");
+  expect(screen.getByText("The passwords do not match.")).toBeInTheDocument();
   expect(access.updateUser).not.toHaveBeenCalled();
 
   await userEvent.clear(screen.getByLabelText("Confirm new password"));
@@ -117,9 +118,22 @@ it("lets an authorized moderator change their password", async () => {
   );
   await userEvent.click(screen.getByRole("button", { name: "Update password" }));
   expect(access.updateUser).toHaveBeenCalledWith({ password: "new-password" });
-  expect(await screen.findByRole("status")).toHaveTextContent(
-    "password has been updated",
+  expect(
+    await screen.findByText("Your password has been updated."),
+  ).toBeInTheDocument();
+  await userEvent.click(
+    screen.getByRole("link", { name: "Close password dialog" }),
   );
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Open ranked view" })).toBeVisible();
+});
+
+it("closes the password dialog when Escape is pressed", async () => {
+  window.history.replaceState({}, "", "/moderator/password");
+  render(<App />);
+  expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  fireEvent.keyDown(window, { key: "Escape" });
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });
 
 it("protects direct password-change links behind moderator authorization", async () => {

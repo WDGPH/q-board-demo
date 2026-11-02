@@ -661,17 +661,6 @@ function Board() {
               />
             )}
             {moderator ? (
-              changePassword ? (
-                <PasswordChangePage
-                  backTo={`${modLink}${sessionSearch}`}
-                  onChangePassword={async (newPassword) => {
-                    const { error } = await supabase!.auth.updateUser({
-                      password: newPassword,
-                    });
-                    if (error) throw error;
-                  }}
-                />
-              ) : (
               <section className="dashboard">
                 <div className="summary-grid">
                   {statuses.map((s) => (
@@ -741,7 +730,6 @@ function Board() {
                   )}
                 </div>
               </section>
-              )
             ) : (
               <div className="attendee-layout">
                 <aside>
@@ -822,6 +810,17 @@ function Board() {
                   </div>
                 </section>
               </div>
+            )}
+            {changePassword && (
+              <PasswordChangePage
+                backTo={`${modLink}${sessionSearch}`}
+                onChangePassword={async (newPassword) => {
+                  const { error } = await supabase!.auth.updateUser({
+                    password: newPassword,
+                  });
+                  if (error) throw error;
+                }}
+              />
             )}
           </>
         )}

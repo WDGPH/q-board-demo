@@ -102,6 +102,7 @@ export const demoText = {
   passwordSaved: "Your password has been updated.",
   passwordMismatch: "The passwords do not match.",
   passwordChangeFailed: "Password update failed. Please retry.",
+  closePasswordDialog: "Close password dialog",
   backToModerator: "Back to moderator panel",
   allStatuses: "All",
   shortlist: "Shortlist",
