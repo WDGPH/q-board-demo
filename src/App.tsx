@@ -36,6 +36,7 @@ import { SessionSelector } from "./components/SessionSelector";
 import { ModeratorCard } from "./components/ModeratorCard";
 import { KioskView } from "./components/KioskView";
 import { RankedView } from "./components/RankedView";
+import { PasswordChangePage } from "./components/PasswordChangePage";
 import { statuses, type Event, type Question, type Status } from "./types";
 
 let sessionPromise: Promise<string> | undefined;
@@ -60,6 +61,8 @@ function Board() {
   const navigate = useNavigate();
   const moderator = location.pathname.startsWith("/moderator");
   const ranked = moderator && location.pathname.endsWith("/ranked");
+  const changePassword =
+    !preview && moderator && location.pathname.endsWith("/password");
   const [event, setEvent] = useState<Event | null>(null);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
     null,
@@ -605,21 +608,29 @@ function Board() {
                         {uiText.exportCsv}
                       </button>
                       {!preview && (
-                        <button
-                          className="text-link"
-                          onClick={async () => {
-                            const result = await supabase!.auth.signOut();
-                            if (result.error) {
-                              setError(uiText.signOutFailed);
-                              return;
-                            }
-                            setAuthorized(false);
-                            setQuestions([]);
-                            navigate(base);
-                          }}
-                        >
-                          {uiText.signOut}
-                        </button>
+                        <div className="moderator-account-actions">
+                          <Link
+                            className="text-link"
+                            to={`${modLink}/password${sessionSearch}`}
+                          >
+                            {uiText.changePasswordLink}
+                          </Link>
+                          <button
+                            className="text-link"
+                            onClick={async () => {
+                              const result = await supabase!.auth.signOut();
+                              if (result.error) {
+                                setError(uiText.signOutFailed);
+                                return;
+                              }
+                              setAuthorized(false);
+                              setQuestions([]);
+                              navigate(base);
+                            }}
+                          >
+                            {uiText.signOut}
+                          </button>
+                        </div>
                       )}
                     </>
                   ) : (
@@ -641,7 +652,7 @@ function Board() {
                 <button onClick={manualRefresh}>{uiText.retry}</button>
               </div>
             )}
-            {sessions.length > 0 && (
+            {sessions.length > 0 && !changePassword && (
               <SessionSelector
                 sessions={sessions}
                 selectedId={sessionId}
@@ -650,6 +661,17 @@ function Board() {
               />
             )}
             {moderator ? (
+              changePassword ? (
+                <PasswordChangePage
+                  backTo={`${modLink}${sessionSearch}`}
+                  onChangePassword={async (newPassword) => {
+                    const { error } = await supabase!.auth.updateUser({
+                      password: newPassword,
+                    });
+                    if (error) throw error;
+                  }}
+                />
+              ) : (
               <section className="dashboard">
                 <div className="summary-grid">
                   {statuses.map((s) => (
@@ -719,6 +741,7 @@ function Board() {
                   )}
                 </div>
               </section>
+              )
             ) : (
               <div className="attendee-layout">
                 <aside>
@@ -840,6 +863,8 @@ export default function App() {
         <Route path="/" element={<Board />} />
         <Route path="/e/:slug" element={<Board />} />
         <Route path="/moderator" element={<Board />} />
+        <Route path="/moderator/password" element={<Board />} />
+        <Route path="/moderator/:slug/password" element={<Board />} />
         <Route path="/moderator/:slug" element={<Board />} />
         <Route path="/moderator/ranked" element={<Board />} />
         <Route path="/moderator/:slug/ranked" element={<Board />} />

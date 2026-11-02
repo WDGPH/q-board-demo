@@ -717,6 +717,19 @@ main {
   height: 44px;
   flex-shrink: 0;
 }
+.moderator-account-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.moderator-account-actions .text-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+}
 .hero-symbol {
   position: relative;
   display: grid;
@@ -1118,6 +1131,10 @@ textarea::placeholder {
 .login-panel h1 {
   font-size: 30px;
   letter-spacing: -1px;
+  margin: 12px 0;
+}
+.password-panel h2 {
+  font-size: 24px;
   margin: 12px 0;
 }
 .login-panel > p {
