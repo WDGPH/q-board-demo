@@ -3,7 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import App from "../src/App";
 
-const access = vi.hoisted(() => ({ allowed: true }));
+const access = vi.hoisted(() => ({
+  allowed: true,
+  updateUser: vi.fn(async (_input: { password: string }) => ({ error: null })),
+}));
 vi.mock("../event.config", () => ({ default: {} }));
 vi.mock("../src/lib/supabase", async () => {
   const { demoEvent, initialDemo } = await import("../src/lib/demo");
@@ -21,6 +24,7 @@ vi.mock("../src/lib/supabase", async () => {
           data: { session: { user: { id: "user" } } },
           error: null,
         }),
+        updateUser: access.updateUser,
         onAuthStateChange: () => ({
           data: { subscription: { unsubscribe: vi.fn() } },
         }),
@@ -36,6 +40,7 @@ vi.mock("../src/lib/supabase", async () => {
 
 beforeEach(() => {
   access.allowed = true;
+  access.updateUser.mockClear();
   window.history.replaceState({}, "", "/moderator");
 });
 
@@ -85,5 +90,60 @@ it("closes the kiosk when a refresh detects revoked moderator access", async () 
   ).toBeInTheDocument();
   expect(
     screen.queryByRole("button", { name: "Exit kiosk" }),
+  ).not.toBeInTheDocument();
+});
+
+it("lets an authorized moderator change their password", async () => {
+  render(<App />);
+  await userEvent.click(
+    await screen.findByRole("link", { name: "Change password" }),
+  );
+  expect(
+    await screen.findByRole("heading", { name: "Change your password" }),
+  ).toBeInTheDocument();
+  expect(screen.getByRole("dialog")).toHaveAttribute("aria-modal", "true");
+  await userEvent.type(screen.getByLabelText("New password"), "new-password");
+  await userEvent.type(
+    screen.getByLabelText("Confirm new password"),
+    "different-password",
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Update password" }));
+  expect(screen.getByText("The passwords do not match.")).toBeInTheDocument();
+  expect(access.updateUser).not.toHaveBeenCalled();
+
+  await userEvent.clear(screen.getByLabelText("Confirm new password"));
+  await userEvent.type(
+    screen.getByLabelText("Confirm new password"),
+    "new-password",
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Update password" }));
+  expect(access.updateUser).toHaveBeenCalledWith({ password: "new-password" });
+  expect(
+    await screen.findByText("Your password has been updated."),
+  ).toBeInTheDocument();
+  await userEvent.click(
+    screen.getByRole("link", { name: "Close password dialog" }),
+  );
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Open ranked view" })).toBeVisible();
+});
+
+it("closes the password dialog when Escape is pressed", async () => {
+  window.history.replaceState({}, "", "/moderator/password");
+  render(<App />);
+  expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  fireEvent.keyDown(window, { key: "Escape" });
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+});
+
+it("protects direct password-change links behind moderator authorization", async () => {
+  access.allowed = false;
+  window.history.replaceState({}, "", "/moderator/password");
+  render(<App />);
+  expect(
+    await screen.findByRole("button", { name: "Sign in" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("heading", { name: "Change your password" }),
   ).not.toBeInTheDocument();
 });

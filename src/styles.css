@@ -717,6 +717,19 @@ main {
   height: 44px;
   flex-shrink: 0;
 }
+.moderator-account-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.moderator-account-actions .text-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+}
 .hero-symbol {
   position: relative;
   display: grid;
@@ -1119,6 +1132,42 @@ textarea::placeholder {
   font-size: 30px;
   letter-spacing: -1px;
   margin: 12px 0;
+}
+.password-panel h2 {
+  font-size: 24px;
+  margin: 12px 0;
+}
+.password-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(25 39 33 / 48%);
+  backdrop-filter: blur(3px);
+}
+.password-panel {
+  position: relative;
+  width: min(100%, 440px);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  margin: 0;
+  box-shadow: 0 20px 70px rgb(18 31 25 / 25%);
+}
+.password-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  color: #536158;
+}
+.password-close:hover {
+  background: #edf2e8;
 }
 .login-panel > p {
   color: #768071;
