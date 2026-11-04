@@ -1,0 +1,9 @@
+{
+  "organizationName": "Event Organizing Committee",
+  "contactName": "Event Privacy Contact",
+  "contactEmail": "contact@example.org",
+  "deploymentEnvironment": "Vercel/GitHub Pages",
+  "supabaseRegion": "Canada",
+  "retentionPeriod": "90 days",
+  "updatedDate": "January 1, 1900"
+}
