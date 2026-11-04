@@ -1,10 +1,11 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import App from "../src/App";
 
 const access = vi.hoisted(() => ({
   allowed: true,
+  rpcCalls: [] as { name: string; args?: Record<string, unknown> }[],
   updateUser: vi.fn(async (_input: { password: string }) => ({ error: null })),
 }));
 vi.mock("../event.config", () => ({ default: {} }));
@@ -30,16 +31,20 @@ vi.mock("../src/lib/supabase", async () => {
         }),
       },
       from: () => query,
-      rpc: async (name: string) => ({
-        data: name === "is_moderator" ? access.allowed : initialDemo(),
-        error: null,
-      }),
+      rpc: async (name: string, args?: Record<string, unknown>) => {
+        access.rpcCalls.push({ name, args });
+        return {
+          data: name === "is_moderator" ? access.allowed : initialDemo(),
+          error: null,
+        };
+      },
     },
   };
 });
 
 beforeEach(() => {
   access.allowed = true;
+  access.rpcCalls.length = 0;
   access.updateUser.mockClear();
   window.history.replaceState({}, "", "/moderator");
 });
@@ -53,6 +58,22 @@ it("keeps kiosk controls behind moderator authorization", async () => {
   expect(
     screen.queryByRole("button", { name: "Open kiosk" }),
   ).not.toBeInTheDocument();
+});
+
+it("loads the kiosk route using only the public question list", async () => {
+  window.history.replaceState({}, "", "/kiosk/test-event");
+  render(<App />);
+
+  expect(
+    await screen.findByRole("button", { name: "Exit kiosk" }),
+  ).toBeInTheDocument();
+  expect(access.rpcCalls).toContainEqual({
+    name: "list_questions",
+    args: { p_event_id: "demo", p_moderator: false },
+  });
+  expect(access.rpcCalls.some((call) => call.name === "is_moderator")).toBe(
+    false,
+  );
 });
 
 it("protects direct ranked links and removes ranked content when access is revoked", async () => {
@@ -75,7 +96,7 @@ it("protects direct ranked links and removes ranked content when access is revok
   expect(screen.queryByRole("list")).not.toBeInTheDocument();
 });
 
-it("closes the kiosk when a refresh detects revoked moderator access", async () => {
+it("keeps the public kiosk open when moderator access is revoked", async () => {
   render(<App />);
   await userEvent.click(
     await screen.findByRole("button", { name: "Open kiosk" }),
@@ -83,14 +104,26 @@ it("closes the kiosk when a refresh detects revoked moderator access", async () 
   expect(
     screen.getByRole("button", { name: "Exit kiosk" }),
   ).toBeInTheDocument();
+  const previousListCalls = access.rpcCalls.filter(
+    (call) => call.name === "list_questions",
+  ).length;
   access.allowed = false;
   fireEvent(window, new Event("online"));
+  await waitFor(() =>
+    expect(
+      access.rpcCalls.filter((call) => call.name === "list_questions"),
+    ).toHaveLength(previousListCalls + 1),
+  );
   expect(
-    await screen.findByRole("button", { name: "Sign in" }),
+    access.rpcCalls.filter((call) => call.name === "list_questions").at(-1)
+      ?.args?.p_moderator,
+  ).toBe(false);
+  expect(
+    screen.getByRole("button", { name: "Exit kiosk" }),
   ).toBeInTheDocument();
-  expect(
-    screen.queryByRole("button", { name: "Exit kiosk" }),
-  ).not.toBeInTheDocument();
+  expect(access.rpcCalls.some((call) => call.name === "is_moderator")).toBe(
+    true,
+  );
 });
 
 it("lets an authorized moderator change their password", async () => {
