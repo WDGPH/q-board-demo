@@ -157,17 +157,38 @@ The database rejects unknown sessions and requires a session on new questions fo
 
 References: [Supabase anonymous sign-ins](https://supabase.com/docs/guides/auth/auth-anonymous), [row-level security](https://supabase.com/docs/guides/database/postgres/row-level-security), and [column-level privileges](https://supabase.com/docs/guides/database/postgres/column-level-security).
 
-## Deploy to Vercel
+## Deploy
+
+Q Board is a static Vite app; no application server is required. Vercel and GitHub Pages are both supported deployment options. For either option, run all migrations in the production Supabase project and create the event and moderator users as described above. Do not load development seeds into production.
+
+### Supabase production settings
+
+Set **both** `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in the deployment platform’s build environment. The values are embedded into the frontend at build time, so redeploy after changing them. The anon key is intended for public clients; never use a service-role key in the frontend.
+
+In Supabase, open **Authentication → URL Configuration** and set **Site URL** to the deployed app URL. For a GitHub Pages project site, this includes the repository path, for example `https://OWNER.github.io/REPOSITORY/`; for a user or organization site, use `https://OWNER.github.io/`. Add the deployed URL and any auth email callback URLs to **Redirect URLs**. If moderator recovery links should open the password-change page, allow the corresponding `/moderator/password` URL under the deployed base path. If both hosting options are active, allowlist both hosts.
+
+### Vercel
 
 1. Push the repository to your Git host and import it into Vercel.
 2. Choose the Vite preset: build command `npm run build`, output directory `dist`.
-3. Set **both** `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in the production environment. They are embedded at build time, so redeploy after changes.
-4. Run all migrations in your production Supabase project and create the event and moderator users as above. Do not load development seeds into production.
-5. Deploy. `vercel.json` provides SPA rewrites so direct event and moderator links work.
-6. Configure the HTTPS site URL in Supabase Auth. For a custom domain, add it in Vercel’s domain settings, apply the provided DNS records, and update the Supabase site URL.
-7. Verify that the local-preview banner is absent, then carry out the launch checks below.
+3. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to the Vercel production environment.
+4. Deploy. `vercel.json` provides SPA rewrites so direct event and moderator links work.
+5. For a custom domain, add it in Vercel’s domain settings, apply the provided DNS records, and update the Supabase URL configuration above.
+6. Verify that the local-preview banner is absent, then carry out the launch checks below.
 
-No application server is required. Other static hosts can serve `dist/` if all app routes fall back to `index.html`.
+### GitHub Pages
+
+The workflow in `.github/workflows/deploy-pages.yml` deploys the `main` branch to a GitHub Pages **project site** at `https://OWNER.github.io/REPOSITORY/`. It also supports manual runs from the Actions tab. Its Vite base path and SPA fallback support app routes such as `/e/SLUG` and `/moderator` under that repository path.
+
+For `q-board-demo`, deploying without Supabase variables is deliberate: the site demonstrates the local-preview experience, with sample data stored in each visitor’s browser and intentionally open moderator access. This is a demo, not a production-connected event. For a production deployment, set both Supabase variables before publishing.
+
+1. In the repository, open **Settings → Pages** and set the build and deployment source to **GitHub Actions**.
+2. Open **Settings → Secrets and variables → Actions → Variables** and add `ENABLE_GITHUB_PAGES` with the exact value `true`. The workflow skips its build unless this repository variable is enabled.
+3. For a connected deployment, add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as Actions repository variables there as well. The workflow passes them into the Vite build. If both are absent, the deliberate local-preview demo mode runs instead of connecting to Supabase.
+4. Push to `main` or run **Deploy QBoard to GitHub Pages** from the Actions tab. Confirm the deployment completes, then configure the deployed URL in Supabase as described above.
+5. In demo mode, expect the local-preview banner. For a production-connected deployment, verify the banner is absent, then carry out the launch checks below.
+
+The current Pages workflow assumes the standard project-site URL `OWNER.github.io/REPOSITORY/`. A user or organization site at `OWNER.github.io/`, or a custom domain serving from its root, needs a different Vite base path before deployment. Other static hosts can also serve `dist/` if all app routes fall back to `index.html`.
 
 ## Validation and launch checks
 
