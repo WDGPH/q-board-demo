@@ -135,7 +135,7 @@ export const demoText = {
   sortTop: "Top",
   refresh: "Refresh",
   footerMessage: "Made for meaningful conversations.",
-  footerPrivacy: "Anonymous by design. Thoughtful by nature.",
+  footerPrivacy: "Anonymous by design. See our privacy statement.",
   reviewNotice: "All questions are reviewed by our moderators.",
   pageNotFound: "Page not found",
   returnToBoard: "Return to the question board",
