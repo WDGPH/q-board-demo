@@ -857,7 +857,7 @@ function Empty({ title, text }: { title: string; text: string }) {
 }
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         <Route path="/" element={<Board />} />
         <Route path="/e/:slug" element={<Board />} />
