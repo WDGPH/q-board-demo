@@ -153,3 +153,55 @@ it("scopes questions and the participation destination to the selected session",
   await userEvent.keyboard("{Escape}");
   expect(onExit).toHaveBeenCalledOnce();
 });
+
+it("keeps fullscreen active when the exit callback changes", () => {
+  const previousFullscreenElement = Object.getOwnPropertyDescriptor(
+    document,
+    "fullscreenElement",
+  );
+  const previousExitFullscreen = Object.getOwnPropertyDescriptor(
+    document,
+    "exitFullscreen",
+  );
+  let fullscreenElement: Element | null = null;
+  const exitFullscreen = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(document, "fullscreenElement", {
+    configurable: true,
+    get: () => fullscreenElement,
+  });
+  Object.defineProperty(document, "exitFullscreen", {
+    configurable: true,
+    value: exitFullscreen,
+  });
+
+  let view: ReturnType<typeof render> | undefined;
+  try {
+    const props = {
+      event: demoEvent,
+      questions: initialDemo(),
+      selectedSessionId: null,
+      onSessionChange: vi.fn(),
+      error: "",
+      preview: true,
+    };
+    view = render(<KioskView {...props} onExit={vi.fn()} />);
+    fullscreenElement = view.container.querySelector(".kiosk");
+    view.rerender(<KioskView {...props} onExit={vi.fn()} />);
+    expect(exitFullscreen).not.toHaveBeenCalled();
+
+    view.unmount();
+    expect(exitFullscreen).toHaveBeenCalledOnce();
+  } finally {
+    view?.unmount();
+    if (previousFullscreenElement)
+      Object.defineProperty(
+        document,
+        "fullscreenElement",
+        previousFullscreenElement,
+      );
+    else Reflect.deleteProperty(document, "fullscreenElement");
+    if (previousExitFullscreen)
+      Object.defineProperty(document, "exitFullscreen", previousExitFullscreen);
+    else Reflect.deleteProperty(document, "exitFullscreen");
+  }
+});

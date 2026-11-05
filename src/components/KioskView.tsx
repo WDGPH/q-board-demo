@@ -35,6 +35,7 @@ export function KioskView({
 }) {
   const root = useRef<HTMLDivElement>(null);
   const exitButton = useRef<HTMLButtonElement>(null);
+  const onExitRef = useRef(onExit);
   const [page, setPage] = useState(0);
   const [paused, setPaused] = useState(false);
   const [allSessions, setAllSessions] = useState(false);
@@ -94,10 +95,14 @@ export function KioskView({
     return () => window.clearInterval(timer);
   }, [paused, count, selectedSessionId, allSessions]);
   useEffect(() => {
+    onExitRef.current = onExit;
+  }, [onExit]);
+  useEffect(() => {
     exitButton.current?.focus();
     const element = root.current;
     const keydown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !document.fullscreenElement) onExit();
+      if (e.key === "Escape" && !document.fullscreenElement)
+        onExitRef.current();
     };
     const timer = window.setInterval(() => setNow(Date.now()), 10000);
     document.addEventListener("keydown", keydown);
@@ -110,7 +115,7 @@ export function KioskView({
       if (document.fullscreenElement === element)
         void document.exitFullscreen().catch(() => {});
     };
-  }, [onExit]);
+  }, []);
 
   async function fullscreen() {
     try {
