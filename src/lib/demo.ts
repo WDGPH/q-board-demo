@@ -139,6 +139,7 @@ export const demoText = {
   reviewNotice: "All questions are reviewed by our moderators.",
   pageNotFound: "Page not found",
   returnToBoard: "Return to the question board",
+  privacyFooterMessage: "Questions and discussion",
   brandPrefix: "q",
   brandSuffix: "board",
   previewNotice: "Local preview · Changes stay in this browser.",

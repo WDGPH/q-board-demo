@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import { Link } from "react-router-dom";
 import privacyConfig from "../../privacy.config.json";
 import privacyMarkdown from "../../PRIVACY.md?raw";
+import { uiText } from "../lib/event";
 
 const privacyValues: Record<string, string> = {
   SUPABASE_REGION: privacyConfig.supabaseRegion,
@@ -27,11 +28,12 @@ export function PrivacyPage() {
           <span className="brand-mark">
             <MessageSquare size={21} />
           </span>
-          Q<span className="brand-light">Board</span>
+          {uiText.brandPrefix}
+          <span className="brand-light">{uiText.brandSuffix}</span>
         </Link>
         <Link className="header-link" to="/">
           <ArrowLeft size={15} />
-          Question board
+          {uiText.questionBoardLink}
         </Link>
       </header>
       <main className="privacy-main">
@@ -42,10 +44,10 @@ export function PrivacyPage() {
       <footer className="site-footer">
         <span>
           <MessageSquare size={15} />
-          Questions and discussion
+          {uiText.privacyFooterMessage}
         </span>
         <Link className="footer-privacy-link" to="/">
-          Return to question board
+          {uiText.returnToBoard}
         </Link>
       </footer>
     </>
