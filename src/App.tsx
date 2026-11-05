@@ -253,13 +253,13 @@ function Board() {
     const params = new URLSearchParams(location.search);
     const requested = params.get("session");
     setSelectedSessionId(
-      moderator && requested === ""
+      (moderator || kioskRoute) && requested === ""
         ? ""
         : (event.sessions?.find((s) => s.id === requested)?.id ??
             defaultSession(event.sessions ?? [])?.id ??
             null),
     );
-  }, [event, location.search, moderator]);
+  }, [event, location.search, moderator, kioskRoute]);
   function selectSession(id: string) {
     setSelectedSessionId(id);
     if (!moderator) return;
