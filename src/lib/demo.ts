@@ -163,7 +163,7 @@ export const demoText = {
   questionLabel: "Your question",
   questionPrivacy: "Please don’t include personal or confidential information.",
   questionReviewNotice:
-    "Questions are reviewed before appearing on the board. Submissions are anonymous.",
+    "Questions are reviewed before appearing on the board.",
   questionPlaceholder: "What would you like our panel to discuss?",
   removeVote: "Remove vote",
   upvote: "Upvote",
