@@ -163,6 +163,33 @@ it("preserves selected sessions through dashboard links, direct reloads, and gen
   );
 });
 
+it("opens the kiosk on general questions when selected by the moderator", async () => {
+  saveDemo(
+    initialDemo().map((q, i) => ({
+      ...q,
+      session_id: i === 6 ? "closing" : i === 4 ? null : "opening",
+      ...(i === 4 ? { status: "approved" as const } : {}),
+    })),
+  );
+  window.history.replaceState(
+    {},
+    "",
+    "/moderator/public-health-ai-symposium?session=",
+  );
+  const user = userEvent.setup();
+  render(<App />);
+
+  await user.click(
+    await screen.findByRole("button", { name: "Open kiosk" }),
+  );
+
+  expect(
+    await screen.findByRole("heading", { name: "General questions" }),
+  ).toBeInTheDocument();
+  expect(screen.getByText(initialDemo()[4].question_text)).toBeInTheDocument();
+  expect(screen.getByText("01 questions on the board")).toBeInTheDocument();
+});
+
 it("handles empty sessions and live status/vote changes", async () => {
   render(<App />);
   await screen.findByRole("list");
