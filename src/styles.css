@@ -1,4 +1,17 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap");
+@font-face {
+  font-family: "DM Sans";
+  src: url("../assets/fonts/DMSans/DMSans-VariableFont_opsz,wght.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Manrope";
+  src: url("../assets/fonts/Manrope/Manrope-VariableFont_wght.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+}
 
 .ranked-view {
   min-height: 100dvh;
@@ -662,6 +675,49 @@ main {
   padding: 0 40px 65px;
   margin: auto;
   min-height: calc(100vh - 165px);
+}
+.privacy-main {
+  max-width: 900px;
+  padding-top: 52px;
+}
+.privacy-document {
+  color: #35463b;
+  font-size: 15px;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+.privacy-document h1,
+.privacy-document h2,
+.privacy-document h3 {
+  color: #203b32;
+  line-height: 1.25;
+}
+.privacy-document h1 {
+  font-family: "Manrope", sans-serif;
+  font-size: 36px;
+  margin: 0 0 22px;
+}
+.privacy-document h3 {
+  font-size: 19px;
+  margin: 30px 0 8px;
+}
+.privacy-document p {
+  margin: 0 0 18px;
+}
+.privacy-document a {
+  color: #446e43;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.privacy-document > p:last-child {
+  color: #748078;
+  font-size: 13px;
+  margin-top: 32px;
+}
+.footer-privacy-link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .event-hero {
   padding: 45px 0 40px;
