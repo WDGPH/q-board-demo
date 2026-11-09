@@ -27,7 +27,7 @@ beforeAll(async () => {
     readFileSync("supabase/migrations/202610270001_answered_order.sql", "utf8"),
   );
   await db.exec(
-    readFileSync("supabase/migrations/202611090002_question_revisions.sql", "utf8"),
+    readFileSync("supabase/migrations/202611090001_questions_realtime.sql", "utf8"),
   );
   await db.query("insert into auth.users(id) values ($1),($2),($3)", [
     attendee,
