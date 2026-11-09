@@ -4,6 +4,7 @@ import { describe, it, expect, vi } from "vitest";
 import { useState } from "react";
 import { QuestionForm } from "../src/components/QuestionForm";
 import { StatusBadge, VoteButton } from "../src/components/QuestionCard";
+import { ModeratorCard } from "../src/components/ModeratorCard";
 import { initialDemo } from "../src/lib/demo";
 import { makeCsv } from "../src/lib/csv";
 describe("question submission", () => {
@@ -108,6 +109,42 @@ it("keeps previous vote on failure", async () => {
   await userEvent.click(screen.getByRole("button"));
   expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "false");
   expect(screen.getByRole("alert")).toHaveTextContent("Vote failed");
+});
+it("blocks a stale moderator draft until the latest note is reloaded", async () => {
+  const question = initialDemo()[0];
+  const onUpdate = vi.fn().mockResolvedValue(3);
+  const { rerender } = render(
+    <ModeratorCard question={question} onUpdate={onUpdate} />,
+  );
+  const note = screen.getByRole("textbox");
+  await userEvent.clear(note);
+  await userEvent.type(note, "My unsaved note");
+  rerender(
+    <ModeratorCard
+      question={{
+        ...question,
+        revision: 2,
+        moderator_note: "Note saved by another moderator",
+      }}
+      onUpdate={onUpdate}
+    />,
+  );
+
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "This question changed since you loaded it.",
+  );
+  expect(screen.getByRole("button", { name: "Save note" })).toBeDisabled();
+  await userEvent.click(
+    screen.getByRole("button", { name: "Reload latest note" }),
+  );
+  expect(note).toHaveValue("Note saved by another moderator");
+  await userEvent.click(screen.getByRole("button", { name: "Save note" }));
+  expect(onUpdate).toHaveBeenCalledWith(
+    question.id,
+    question.status,
+    "Note saved by another moderator",
+    2,
+  );
 });
 it("exports all fields with escaped quotes, newlines, and formula protection", () => {
   const q = {

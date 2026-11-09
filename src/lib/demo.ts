@@ -171,6 +171,9 @@ export const demoText = {
   anonymousAttendee: "Anonymous attendee",
   noteSaved: "Saved.",
   saveFailed: "Could not save. Please retry.",
+  staleUpdate:
+    "This question changed since you loaded it. Your update was not saved. Reload the latest note before trying again.",
+  reloadLatest: "Reload latest note",
   moderatorNoteLabel: "Internal moderator note",
   approve: "Approve",
   markAnswered: "Mark answered",
@@ -241,6 +244,7 @@ export function initialDemo(): Question[] {
     event_id: "demo",
     question_text,
     status,
+    revision: 1,
     vote_count,
     has_voted: false,
     created_at: new Date(Date.UTC(2026, 10, 20, 10, i * 4)).toISOString(),
@@ -258,9 +262,12 @@ export function initialDemo(): Question[] {
 const storageKey = "q-board-preview-v1";
 export function readDemo(): Question[] {
   try {
-    return (
-      JSON.parse(localStorage.getItem(storageKey) || "null") || initialDemo()
-    );
+    const questions: Question[] =
+      JSON.parse(localStorage.getItem(storageKey) || "null") || initialDemo();
+    return questions.map((question) => ({
+      ...question,
+      revision: question.revision ?? 1,
+    }));
   } catch {
     return initialDemo();
   }
