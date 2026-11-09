@@ -739,6 +739,9 @@ main {
   border-radius: 50%;
   background: #708d5e;
 }
+.event-name {
+  min-width: 0;
+}
 .event-date {
   border-left: 1px solid #d1d9ce;
   padding-left: 17px;
@@ -1464,17 +1467,23 @@ textarea::placeholder {
     margin-bottom: 25px;
   }
   .event-detail {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 6px;
     font-size: 11px;
     margin-bottom: 18px;
   }
+  .event-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .event-date {
     border: 0;
     padding: 0;
-    margin: 2px 0 0 12px;
-    flex-basis: 100%;
+    margin: 0;
+    flex: 0 0 auto;
     font-size: 10px;
+    white-space: nowrap;
   }
   .hero-row {
     align-items: flex-start;

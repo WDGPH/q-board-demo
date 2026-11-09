@@ -596,7 +596,7 @@ function Board() {
             <section className="event-hero">
               <div className="event-detail">
                 <span className="event-dot" />
-                {event.name}
+                <span className="event-name">{event.name}</span>
                 {event.starts_at && (
                   <span className="event-date">
                     <CalendarDays size={14} />
