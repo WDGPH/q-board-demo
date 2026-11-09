@@ -666,6 +666,7 @@ function Board() {
             )}
             {sessions.length > 0 && !changePassword && (
               <SessionSelector
+                compact={moderator}
                 sessions={sessions}
                 selectedId={sessionId}
                 onChange={selectSession}
