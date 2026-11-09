@@ -37,6 +37,7 @@ import { ModeratorCard } from "./components/ModeratorCard";
 import { KioskView } from "./components/KioskView";
 import { RankedView } from "./components/RankedView";
 import { PasswordChangePage } from "./components/PasswordChangePage";
+import { PrivacyPage } from "./components/PrivacyPage";
 import { statuses, type Event, type Question, type Status } from "./types";
 
 let sessionPromise: Promise<string> | undefined;
@@ -841,7 +842,9 @@ function Board() {
           <MessageSquare size={15} />
           {uiText.footerMessage}
         </span>
-        <span>{uiText.footerPrivacy}</span>
+        <Link className="footer-privacy-link" to="/privacy">
+          {uiText.footerPrivacy}
+        </Link>
       </footer>
     </>
   );
@@ -875,6 +878,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Board />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/e/:slug" element={<Board />} />
         <Route path="/kiosk" element={<KioskRoute />} />
         <Route path="/kiosk/:slug" element={<KioskRoute />} />
