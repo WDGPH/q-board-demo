@@ -2,7 +2,8 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import App from "../src/App";
-import { initialDemo, readDemo, saveDemo } from "../src/lib/demo";
+import { demoText, initialDemo, readDemo, saveDemo } from "../src/lib/demo";
+import { ALL_SESSIONS_ID } from "../src/components/SessionSelector";
 
 vi.mock("../src/lib/supabase", () => ({
   preview: true,
@@ -37,6 +38,25 @@ beforeEach(() => {
     })),
   );
   window.history.replaceState({}, "", "/moderator/ranked?session=opening");
+});
+
+it("shows questions across all sessions from the moderator picker", async () => {
+  window.history.replaceState({}, "", "/moderator?session=opening");
+  const user = userEvent.setup();
+  render(<App />);
+
+  const selector = await screen.findByRole("combobox", {
+    name: demoText.sessionLabel,
+  });
+  await user.selectOptions(selector, ALL_SESSIONS_ID);
+  expect(window.location.search).toBe(`?session=${ALL_SESSIONS_ID}`);
+  await user.click(
+    screen.getByRole("button", { name: demoText.allStatuses }),
+  );
+  expect(
+    await screen.findByText(initialDemo()[6].question_text),
+  ).toBeInTheDocument();
+  expect(screen.getByText(initialDemo()[4].question_text)).toBeInTheDocument();
 });
 
 it("opens directly, ranks shortlist before higher-voted approved questions, and excludes other statuses/sessions", async () => {

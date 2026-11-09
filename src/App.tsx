@@ -32,15 +32,41 @@ import { downloadCsv } from "./lib/csv";
 import { defaultSession } from "./lib/sessions";
 import { QuestionForm } from "./components/QuestionForm";
 import { QuestionCard } from "./components/QuestionCard";
-import { SessionSelector } from "./components/SessionSelector";
+import {
+  ALL_SESSIONS_ID,
+  SessionSelector,
+} from "./components/SessionSelector";
 import { ModeratorCard } from "./components/ModeratorCard";
 import { KioskView } from "./components/KioskView";
 import { RankedView } from "./components/RankedView";
 import { PasswordChangePage } from "./components/PasswordChangePage";
 import { PrivacyPage } from "./components/PrivacyPage";
-import { statuses, type Event, type Question, type Status } from "./types";
+import {
+  statuses,
+  type Event,
+  type EventSession,
+  type Question,
+  type Status,
+} from "./types";
 
 let sessionPromise: Promise<string> | undefined;
+function sessionFromSearch(
+  sessions: EventSession[],
+  search: string,
+  allowSpecial: boolean,
+) {
+  const requested = new URLSearchParams(search).get("session");
+  if (
+    allowSpecial &&
+    (requested === "" || requested === ALL_SESSIONS_ID)
+  )
+    return requested;
+  return (
+    sessions.find((session) => session.id === requested)?.id ??
+    defaultSession(sessions)?.id ??
+    null
+  );
+}
 function kioskQuestions(questions: Question[]) {
   return questions.filter((q) =>
     ["approved", "shortlisted", "answered"].includes(q.status),
@@ -105,12 +131,11 @@ function Board() {
         if (!cancelled) {
           setEvent(configuredEvent);
           setSelectedSessionId(
-            configuredEvent.sessions?.find(
-              (s) =>
-                s.id === new URLSearchParams(location.search).get("session"),
-            )?.id ??
-              defaultSession(configuredEvent.sessions ?? [])?.id ??
-              null,
+            sessionFromSearch(
+              configuredEvent.sessions ?? [],
+              location.search,
+              moderator || kioskRoute,
+            ),
           );
           setUserId("preview");
           const demoQuestions = readDemo();
@@ -141,11 +166,11 @@ function Board() {
         const loadedEvent = configureDatabaseEvent(result.data);
         setEvent(loadedEvent);
         setSelectedSessionId(
-          loadedEvent.sessions?.find(
-            (s) => s.id === new URLSearchParams(location.search).get("session"),
-          )?.id ??
-            defaultSession(loadedEvent.sessions ?? [])?.id ??
-            null,
+          sessionFromSearch(
+            loadedEvent.sessions ?? [],
+            location.search,
+            moderator || kioskRoute,
+          ),
         );
         setUserId(id);
         setAuthorized(allowed);
@@ -241,24 +266,30 @@ function Board() {
   }
   const sessions = event?.sessions ?? [];
   const selectedSession =
-    sessions.find((s) => s.id === selectedSessionId) ?? sessions[0];
+    selectedSessionId === ALL_SESSIONS_ID
+      ? undefined
+      : (sessions.find((s) => s.id === selectedSessionId) ?? sessions[0]);
   const sessionId =
-    selectedSessionId === "" ? null : (selectedSession?.id ?? null);
+    selectedSessionId === ALL_SESSIONS_ID
+      ? ALL_SESSIONS_ID
+      : selectedSessionId === ""
+        ? null
+        : (selectedSession?.id ?? null);
   const sessionQuestions = sessions.length
-    ? questions.filter((q) => (q.session_id ?? null) === sessionId)
+    ? sessionId === ALL_SESSIONS_ID
+      ? questions
+      : questions.filter((q) => (q.session_id ?? null) === sessionId)
     : questions;
   const legacyQuestions = questions.some((q) => !q.session_id);
   // Keep session choices shareable, including the legacy general-question list.
   useEffect(() => {
     if (!event) return;
-    const params = new URLSearchParams(location.search);
-    const requested = params.get("session");
     setSelectedSessionId(
-      (moderator || kioskRoute) && requested === ""
-        ? ""
-        : (event.sessions?.find((s) => s.id === requested)?.id ??
-            defaultSession(event.sessions ?? [])?.id ??
-            null),
+      sessionFromSearch(
+        event.sessions ?? [],
+        location.search,
+        moderator || kioskRoute,
+      ),
     );
   }, [event, location.search, moderator, kioskRoute]);
   function selectSession(id: string) {
@@ -667,6 +698,7 @@ function Board() {
             {sessions.length > 0 && !changePassword && (
               <SessionSelector
                 compact={moderator}
+                showAll={moderator}
                 sessions={sessions}
                 selectedId={sessionId}
                 onChange={selectSession}
