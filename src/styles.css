@@ -1496,9 +1496,23 @@ textarea::placeholder {
     display: flex;
   }
   .hero-row:has(.button) .hero-aside {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    align-items: stretch;
+  }
+  .hero-row:has(.button) .moderator-account-actions {
     display: flex;
-    gap: 5px;
-    align-items: flex-end;
+    min-width: 0;
+    gap: 4px;
+  }
+  .hero-row:has(.button) .moderator-account-actions .text-link {
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: 11px;
+    line-height: 1.2;
+    text-align: center;
   }
   .hero-row:has(.button) {
     flex-direction: column;
