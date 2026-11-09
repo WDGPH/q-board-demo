@@ -40,6 +40,11 @@ import { PasswordChangePage } from "./components/PasswordChangePage";
 import { statuses, type Event, type Question, type Status } from "./types";
 
 let sessionPromise: Promise<string> | undefined;
+function kioskQuestions(questions: Question[]) {
+  return questions.filter((q) =>
+    ["approved", "shortlisted", "answered"].includes(q.status),
+  );
+}
 async function ensureSession(): Promise<string> {
   if (!supabase) return "preview";
   if (!sessionPromise)
@@ -60,6 +65,7 @@ function Board() {
   const location = useLocation();
   const navigate = useNavigate();
   const moderator = location.pathname.startsWith("/moderator");
+  const kioskRoute = location.pathname.startsWith("/kiosk");
   const ranked = moderator && location.pathname.endsWith("/ranked");
   const changePassword =
     !preview && moderator && location.pathname.endsWith("/password");
@@ -70,8 +76,6 @@ function Board() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [userId, setUserId] = useState("");
   const [authorized, setAuthorized] = useState(false);
-  const [kiosk, setKiosk] = useState(false);
-  const exitKiosk = useCallback(() => setKiosk(false), []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
@@ -90,7 +94,6 @@ function Board() {
     setSelectedSessionId(null);
     setEvent(null);
     setAuthorized(false);
-    setKiosk(false);
     setFilter("pending");
     setSort(moderator ? "newest" : "top");
     (async () => {
@@ -109,21 +112,25 @@ function Board() {
               null,
           );
           setUserId("preview");
-          setQuestions(readDemo());
+          const demoQuestions = readDemo();
+          setQuestions(kioskRoute ? kioskQuestions(demoQuestions) : demoQuestions);
           setAuthorized(moderator);
         }
         return;
       }
       const id = await ensureSession();
-      const role = await supabase!.rpc("is_moderator");
-      if (role.error) throw role.error;
+      let allowed = false;
+      if (moderator) {
+        const role = await supabase!.rpc("is_moderator");
+        if (role.error) throw role.error;
+        allowed = Boolean(role.data);
+      }
       let query = supabase!.from("events").select("*");
       query = query.eq("slug", slug ?? configuredEvent.slug);
       if (!moderator) query = query.eq("is_active", true);
       const result = await query.maybeSingle();
       if (result.error) throw result.error;
       if (!result.data) throw new Error(uiText.noActiveEvent);
-      const allowed = Boolean(role.data);
       const data = await supabase!.rpc("list_questions", {
         p_event_id: result.data.id,
         p_moderator: moderator && allowed,
@@ -153,18 +160,18 @@ function Board() {
     return () => {
       cancelled = true;
     };
-  }, [slug, moderator, retry]);
+  }, [slug, moderator, kioskRoute, retry]);
   const refresh = useCallback(async () => {
     if (!event) return;
     if (preview) {
-      setQuestions(readDemo());
+      const demoQuestions = readDemo();
+      setQuestions(kioskRoute ? kioskQuestions(demoQuestions) : demoQuestions);
       return;
     }
-    if (kiosk || ranked) {
+    if (ranked) {
       const role = await supabase!.rpc("is_moderator");
       if (role.error) throw role.error;
       if (!role.data) {
-        setKiosk(false);
         setAuthorized(false);
         setQuestions([]);
         return;
@@ -176,12 +183,11 @@ function Board() {
     });
     if (error) throw error;
     setQuestions(data || []);
-  }, [event, moderator, authorized, kiosk, ranked]);
+  }, [event, moderator, authorized, kioskRoute, ranked]);
   useEffect(() => {
     if (!supabase) return;
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) {
-        setKiosk(false);
         setAuthorized(false);
         setQuestions([]);
       }
@@ -202,7 +208,7 @@ function Board() {
               if (active) setError(uiText.updatesPaused);
             });
       },
-      kiosk || ranked ? 10000 : 20000,
+      kioskRoute || ranked ? 10000 : 20000,
     );
     const resume = () => {
       if (document.visibilityState === "visible")
@@ -220,7 +226,7 @@ function Board() {
       window.removeEventListener("online", resume);
       window.removeEventListener("storage", resume);
     };
-  }, [event, refresh, kiosk, ranked]);
+  }, [event, refresh, kioskRoute, ranked]);
   async function manualRefresh() {
     setRefreshing(true);
     try {
@@ -247,13 +253,13 @@ function Board() {
     const params = new URLSearchParams(location.search);
     const requested = params.get("session");
     setSelectedSessionId(
-      moderator && requested === ""
+      (moderator || kioskRoute) && requested === ""
         ? ""
         : (event.sessions?.find((s) => s.id === requested)?.id ??
             defaultSession(event.sessions ?? [])?.id ??
             null),
     );
-  }, [event, location.search, moderator]);
+  }, [event, location.search, moderator, kioskRoute]);
   function selectSession(id: string) {
     setSelectedSessionId(id);
     if (!moderator) return;
@@ -410,9 +416,14 @@ function Board() {
   }
   const base = slug ? `/e/${slug}` : "/";
   const modLink = slug ? `/moderator/${slug}` : "/moderator";
+  const kioskLink = slug ? `/kiosk/${slug}` : "/kiosk";
   const sessionSearch = sessions.length
     ? `?${new URLSearchParams({ session: sessionId ?? "" })}`
     : "";
+  const exitKiosk = useCallback(
+    () => navigate(`${base}${sessionSearch}`),
+    [navigate, base, sessionSearch],
+  );
   if (ranked && !loading && authorized && event) {
     return (
       <RankedView
@@ -442,7 +453,7 @@ function Board() {
       : b.vote_count - a.vote_count ||
         Date.parse(a.created_at) - Date.parse(b.created_at),
   );
-  if (kiosk && moderator && authorized && event) {
+  if (kioskRoute && event) {
     return (
       <KioskView
         event={event}
@@ -589,7 +600,7 @@ function Board() {
                       </Link>
                       <button
                         className="button primary"
-                        onClick={() => setKiosk(true)}
+                        onClick={() => navigate(`${kioskLink}${sessionSearch}`)}
                       >
                         <Monitor size={16} /> {uiText.openKiosk}
                       </button>
@@ -855,12 +866,18 @@ function Empty({ title, text }: { title: string; text: string }) {
     </div>
   );
 }
+function KioskRoute() {
+  const location = useLocation();
+  return <Board key={location.pathname} />;
+}
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Board />} />
         <Route path="/e/:slug" element={<Board />} />
+        <Route path="/kiosk" element={<KioskRoute />} />
+        <Route path="/kiosk/:slug" element={<KioskRoute />} />
         <Route path="/moderator" element={<Board />} />
         <Route path="/moderator/password" element={<Board />} />
         <Route path="/moderator/:slug/password" element={<Board />} />
