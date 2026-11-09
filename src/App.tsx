@@ -198,6 +198,22 @@ function Board() {
   useEffect(() => {
     if (!event) return;
     let active = true;
+    const channel =
+      supabase && moderator && authorized && !changePassword
+        ? supabase
+            .channel(`moderators:${event.id}`, { config: { private: true } })
+            .on(
+              "broadcast",
+              { event: "question_changed" },
+              () => {
+                if (!active) return;
+                refresh()
+                  .then(() => active && setError(""))
+                  .catch(() => active && setError(uiText.updatesPaused));
+              },
+            )
+            .subscribe()
+        : null;
     const timer = setInterval(
       () => {
         if (document.visibilityState === "visible")
@@ -222,12 +238,13 @@ function Board() {
     window.addEventListener("storage", resume);
     return () => {
       active = false;
+      if (channel) void supabase?.removeChannel(channel);
       clearInterval(timer);
       document.removeEventListener("visibilitychange", resume);
       window.removeEventListener("online", resume);
       window.removeEventListener("storage", resume);
     };
-  }, [event, refresh, kioskRoute, ranked]);
+  }, [event, refresh, kioskRoute, ranked, moderator, authorized, changePassword]);
   async function manualRefresh() {
     setRefreshing(true);
     try {
