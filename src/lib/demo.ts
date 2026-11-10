@@ -109,6 +109,8 @@ export const demoText = {
   backToModerator: "Back to moderator panel",
   allStatuses: "All",
   shortlist: "Shortlist",
+  possibleMatches: "Possible matches",
+  possibleMatchHint: "Similar wording, kept as separate questions",
   brandTagline: "GOOD QUESTIONS. BETTER CONVERSATIONS.",
   questionBoardLink: "Question board",
   moderatorAccess: "Moderator access",

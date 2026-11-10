@@ -29,6 +29,7 @@ import {
   statusLabels,
 } from "./lib/event";
 import { downloadCsv } from "./lib/csv";
+import { findSimilarQuestions } from "./lib/similarity";
 import { defaultSession } from "./lib/sessions";
 import { QuestionForm } from "./components/QuestionForm";
 import { QuestionCard } from "./components/QuestionCard";
@@ -764,6 +765,11 @@ function Board() {
                       <ModeratorCard
                         key={q.id}
                         question={q}
+                        similarQuestions={
+                          q.status === "pending"
+                            ? findSimilarQuestions(q, sessionQuestions)
+                            : []
+                        }
                         onUpdate={update}
                       />
                     ))
