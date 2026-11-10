@@ -30,6 +30,11 @@ vi.mock("../src/lib/supabase", async () => {
           data: { subscription: { unsubscribe: vi.fn() } },
         }),
       },
+      channel: () => {
+        const channel = { on: () => channel, subscribe: () => channel };
+        return channel;
+      },
+      removeChannel: vi.fn(),
       from: () => query,
       rpc: async (name: string, args?: Record<string, unknown>) => {
         access.rpcCalls.push({ name, args });

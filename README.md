@@ -187,6 +187,6 @@ Before using at a conference:
 
 ## Scope notes
 
-Implemented from [the v1 scope](conference_questions_v1_scope.md). Small implementation choices: password-based moderator login, 20-second polling instead of realtime, protected database functions for private-note reads and moderation, and a clearly labeled local preview for setup-free review. Preview storage is not used when Supabase is configured. Optional event sessions extend the original single-list workflow.
+Implemented from [the v1 scope](conference_questions_v1_scope.md). Small implementation choices: password-based moderator login, realtime updates in moderator view with polling as a fallback, protected database functions for private-note reads and moderation, and a clearly labeled local preview for setup-free review. Preview storage is not used when Supabase is configured. Optional event sessions extend the original single-list workflow.
 
 Hosted provisioning, public HTTPS deployment, hosted Auth/API verification, and physical-device checks require an organizer’s environment and remain launch tasks. Google Fonts enhances typography; system font fallbacks keep the app usable if the font service is unavailable.
