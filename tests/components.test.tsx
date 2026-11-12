@@ -7,6 +7,7 @@ import { StatusBadge, VoteButton } from "../src/components/QuestionCard";
 import { ModeratorCard } from "../src/components/ModeratorCard";
 import { initialDemo } from "../src/lib/demo";
 import { makeCsv } from "../src/lib/csv";
+import { findSimilarQuestions } from "../src/lib/similarity";
 describe("question submission", () => {
   it("rejects empty and whitespace-only questions", async () => {
     const submit = vi.fn();
@@ -110,6 +111,37 @@ it("keeps previous vote on failure", async () => {
   expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "false");
   expect(screen.getByRole("alert")).toHaveTextContent("Vote failed");
 });
+it("flags likely duplicate wording without including hidden or unrelated questions", () => {
+  const questions = initialDemo();
+  const pending = {
+    ...questions.find((q) => q.status === "pending")!,
+    id: "similar-pending",
+    question_text: "How can we build public trust in AI decisions?",
+  };
+  expect(
+    findSimilarQuestions(pending, [...questions, pending]).map((q) => q.status),
+  ).toEqual(["answered"]);
+});
+it("shows possible matches as separate questions with their own vote count", () => {
+  const questions = initialDemo();
+  const pending = {
+    ...questions.find((q) => q.status === "pending")!,
+    id: "similar-pending",
+    question_text: "How can we build public trust in AI decisions?",
+  };
+  const match = questions.find((q) => q.status === "answered")!;
+  render(
+    <ModeratorCard
+      question={pending}
+      similarQuestions={[match]}
+      onUpdate={async () => {}}
+    />,
+  );
+  expect(screen.getByText("Possible matches")).toBeInTheDocument();
+  expect(
+    screen.getByText(match.question_text, { selector: "p" }),
+  ).toBeInTheDocument();
+  expect(screen.getByText("Answered · 7 votes")).toBeInTheDocument();
 it("blocks a stale moderator draft until the latest note is reloaded", async () => {
   const question = initialDemo()[0];
   const onUpdate = vi.fn().mockResolvedValue(3);

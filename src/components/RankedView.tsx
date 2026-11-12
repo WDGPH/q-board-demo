@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Check, RefreshCw, Undo2 } from "lucide-react";
 import { uiText } from "../lib/event";
-import { SessionSelector } from "./SessionSelector";
+import { ALL_SESSIONS_ID, SessionSelector } from "./SessionSelector";
 import { StatusBadge } from "./QuestionCard";
 import type { Event, Question, Status } from "../types";
 
@@ -41,7 +41,9 @@ export function RankedView({
         (q.status === "shortlisted" ||
           q.status === "approved" ||
           q.status === "answered") &&
-        (!sessions.length || (q.session_id ?? null) === selectedSessionId),
+        (!sessions.length ||
+          selectedSessionId === ALL_SESSIONS_ID ||
+          (q.session_id ?? null) === selectedSessionId),
     )
     .sort((a, b) => {
       if (a.status === "answered" || b.status === "answered") {
@@ -92,6 +94,7 @@ export function RankedView({
             selectedId={selectedSessionId}
             onChange={onSessionChange}
             showGeneral={questions.some((q) => !q.session_id)}
+            showAll
           />
         )}
         <p className="ranked-count" role="status">
