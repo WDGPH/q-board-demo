@@ -26,7 +26,12 @@ export function RankedView({
   error: string;
   refreshing: boolean;
   onRefresh: () => void;
-  onUpdate: (id: string, status: Status, note: string) => Promise<void>;
+  onUpdate: (
+    id: string,
+    status: Status,
+    note: string,
+    expectedRevision: number,
+  ) => Promise<number>;
   preview: boolean;
 }) {
   const sessions = event.sessions ?? [];
@@ -127,7 +132,12 @@ function RankedQuestion({
 }: {
   question: Question;
   rank: number;
-  onUpdate: (id: string, status: Status, note: string) => Promise<void>;
+  onUpdate: (
+    id: string,
+    status: Status,
+    note: string,
+    expectedRevision: number,
+  ) => Promise<number>;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -141,6 +151,7 @@ function RankedQuestion({
           ? (q.answered_from_status ?? "approved")
           : "answered",
         q.moderator_note ?? "",
+        q.revision,
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : uiText.saveFailed);

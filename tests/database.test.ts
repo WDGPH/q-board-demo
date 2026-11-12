@@ -17,6 +17,28 @@ beforeAll(async () => {
   await db.exec(
     `create role anon; create role authenticated; create schema auth; create table auth.users(id uuid primary key, aud text, role text, is_anonymous boolean, created_at timestamptz, updated_at timestamptz); create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$; grant usage on schema auth to authenticated, anon; grant execute on function auth.uid() to authenticated, anon;`,
   );
+  // Hosted Supabase provides these Realtime objects. Capture broadcasts locally
+  // so the real migration and question triggers can run in embedded PostgreSQL.
+  await db.exec(`
+    create schema realtime;
+    create table realtime.messages (topic text, payload jsonb);
+    alter table realtime.messages enable row level security;
+    create function realtime.topic() returns text language sql stable as $$
+      select nullif(current_setting('realtime.topic', true), '')
+    $$;
+    create function realtime.broadcast_changes(
+      topic_name text, event_name text, operation text, table_name text,
+      table_schema text, new_record anyelement, old_record anyelement
+    ) returns void language plpgsql as $$
+    begin
+      insert into realtime.messages(topic, payload)
+      values (topic_name, jsonb_build_object(
+        'event', event_name, 'operation', operation,
+        'record', to_jsonb(new_record), 'old_record', to_jsonb(old_record)
+      ));
+    end;
+    $$;
+  `);
   await db.exec(
     readFileSync("supabase/migrations/202609150001_initial.sql", "utf8"),
   );
@@ -25,6 +47,9 @@ beforeAll(async () => {
   );
   await db.exec(
     readFileSync("supabase/migrations/202610270001_answered_order.sql", "utf8"),
+  );
+  await db.exec(
+    readFileSync("supabase/migrations/202611090001_questions_realtime.sql", "utf8"),
   );
   await db.query("insert into auth.users(id) values ($1),($2),($3)", [
     attendee,
@@ -85,9 +110,10 @@ describe.sequential(
         db.query("select * from public.list_questions($1,true)", [event]),
       ).rejects.toThrow(/Moderator access/);
       await expect(
-        db.query("select public.moderate_question($1,'approved','secret')", [
-          question,
-        ]),
+        db.query(
+          "select public.moderate_question($1,'approved','secret',$2)",
+          [question, 1],
+        ),
       ).rejects.toThrow(/Moderator access/);
       expect(
         (await db.query("select * from public.moderator_users")).rows,
@@ -108,9 +134,23 @@ describe.sequential(
         ).rows,
       ).toHaveLength(1);
       await db.query(
-        "select public.moderate_question($1,'approved','Private panel note')",
-        [question],
+        "select public.moderate_question($1,'approved','Private panel note',$2)",
+        [question, 1],
       );
+    });
+    it("rejects moderation writes based on an outdated revision", async () => {
+      await asUser(moderator);
+      await expect(
+        db.query(
+          "select public.moderate_question($1,'hidden','Stale note',$2)",
+          [question, 1],
+        ),
+      ).rejects.toThrow(/changed since it was loaded/);
+      const current = await db.query<{ status: string; revision: number }>(
+        "select status,revision from public.list_questions($1,true) where id=$2",
+        [event, question],
+      );
+      expect(current.rows[0]).toEqual({ status: "approved", revision: 2 });
     });
     it("shows approved questions without notes and blocks direct note reads", async () => {
       await asUser(other);
@@ -160,8 +200,8 @@ describe.sequential(
     it("supports shortlist and answered workflows with timestamps", async () => {
       await asUser(moderator);
       await db.query(
-        "select public.moderate_question($1,'shortlisted','Panel first')",
-        [question],
+        "select public.moderate_question($1,'shortlisted','Panel first',$2)",
+        [question, 2],
       );
       expect(
         (
@@ -170,9 +210,10 @@ describe.sequential(
           )
         ).rows[0].status,
       ).toBe("shortlisted");
-      await db.query("select public.moderate_question($1,'answered','Done')", [
-        question,
-      ]);
+      await db.query(
+        "select public.moderate_question($1,'answered','Done',$2)",
+        [question, 3],
+      );
       const result = await db.query<{ status: string; answered_at: string }>(
         "select status,answered_at from public.questions",
       );
@@ -189,8 +230,8 @@ describe.sequential(
       expect(listed.rows[0].answered_from_status).toBe("shortlisted");
       // Editing notes does not move a question in the answer sequence.
       await db.query(
-        "select public.moderate_question($1,'answered','Updated note')",
-        [question],
+        "select public.moderate_question($1,'answered','Updated note',$2)",
+        [question, 4],
       );
       expect(
         (
@@ -201,8 +242,8 @@ describe.sequential(
         ).rows[0].answered_at,
       ).toEqual(result.rows[0].answered_at);
       await db.query(
-        "select public.moderate_question($1,'shortlisted','Updated note')",
-        [question],
+        "select public.moderate_question($1,'shortlisted','Updated note',$2)",
+        [question, 5],
       );
       expect(
         (
@@ -213,8 +254,8 @@ describe.sequential(
         ).rows[0],
       ).toEqual({ status: "shortlisted", answered_at: null });
       await db.query(
-        "select public.moderate_question($1,'answered','Done again')",
-        [question],
+        "select public.moderate_question($1,'answered','Done again',$2)",
+        [question, 6],
       );
       const answeredAgain = (
         await db.query<{ answered_at: Date }>(
@@ -227,9 +268,10 @@ describe.sequential(
       );
     });
     it("hides moderated questions and prevents voting on them", async () => {
-      await db.query("select public.moderate_question($1,'hidden','Private')", [
-        question,
-      ]);
+      await db.query(
+        "select public.moderate_question($1,'hidden','Private',$2)",
+        [question, 7],
+      );
       await asUser(other);
       expect(
         (await db.query("select id from public.questions")).rows,
@@ -355,9 +397,10 @@ describe.sequential("optional event sessions", () => {
       "opening",
     ]);
     const opening = pending.rows.find((q) => q.session_id === "opening")!;
-    await db.query("select public.moderate_question($1,'approved','Private')", [
-      opening.id,
-    ]);
+    await db.query(
+      "select public.moderate_question($1,'approved','Private',$2)",
+      [opening.id, 1],
+    );
     await asUser(other);
     await db.query(
       "insert into public.votes(question_id,event_id,voter_id) values($1,$2,$3)",

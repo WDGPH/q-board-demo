@@ -142,6 +142,41 @@ it("shows possible matches as separate questions with their own vote count", () 
     screen.getByText(match.question_text, { selector: "p" }),
   ).toBeInTheDocument();
   expect(screen.getByText("Answered · 7 votes")).toBeInTheDocument();
+it("blocks a stale moderator draft until the latest note is reloaded", async () => {
+  const question = initialDemo()[0];
+  const onUpdate = vi.fn().mockResolvedValue(3);
+  const { rerender } = render(
+    <ModeratorCard question={question} onUpdate={onUpdate} />,
+  );
+  const note = screen.getByRole("textbox");
+  await userEvent.clear(note);
+  await userEvent.type(note, "My unsaved note");
+  rerender(
+    <ModeratorCard
+      question={{
+        ...question,
+        revision: 2,
+        moderator_note: "Note saved by another moderator",
+      }}
+      onUpdate={onUpdate}
+    />,
+  );
+
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "This question changed since you loaded it.",
+  );
+  expect(screen.getByRole("button", { name: "Save note" })).toBeDisabled();
+  await userEvent.click(
+    screen.getByRole("button", { name: "Reload latest note" }),
+  );
+  expect(note).toHaveValue("Note saved by another moderator");
+  await userEvent.click(screen.getByRole("button", { name: "Save note" }));
+  expect(onUpdate).toHaveBeenCalledWith(
+    question.id,
+    question.status,
+    "Note saved by another moderator",
+    2,
+  );
 });
 it("exports all fields with escaped quotes, newlines, and formula protection", () => {
   const q = {

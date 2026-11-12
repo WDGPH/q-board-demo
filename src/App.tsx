@@ -224,6 +224,22 @@ function Board() {
   useEffect(() => {
     if (!event) return;
     let active = true;
+    const channel =
+      supabase && moderator && authorized && !changePassword
+        ? supabase
+            .channel(`moderators:${event.id}`, { config: { private: true } })
+            .on(
+              "broadcast",
+              { event: "question_changed" },
+              () => {
+                if (!active) return;
+                refresh()
+                  .then(() => active && setError(""))
+                  .catch(() => active && setError(uiText.updatesPaused));
+              },
+            )
+            .subscribe()
+        : null;
     const timer = setInterval(
       () => {
         if (document.visibilityState === "visible")
@@ -248,12 +264,13 @@ function Board() {
     window.addEventListener("storage", resume);
     return () => {
       active = false;
+      if (channel) void supabase?.removeChannel(channel);
       clearInterval(timer);
       document.removeEventListener("visibilitychange", resume);
       window.removeEventListener("online", resume);
       window.removeEventListener("storage", resume);
     };
-  }, [event, refresh, kioskRoute, ranked]);
+  }, [event, refresh, kioskRoute, ranked, moderator, authorized, changePassword]);
   async function manualRefresh() {
     setRefreshing(true);
     try {
@@ -315,6 +332,7 @@ function Board() {
           question_text: text,
           status: "pending" as const,
           created_at: new Date().toISOString(),
+          revision: 1,
           vote_count: 0,
           has_voted: false,
           moderator_note: null,
@@ -377,7 +395,12 @@ function Board() {
       ),
     );
   }
-  async function update(id: string, status: Status, note: string) {
+  async function update(
+    id: string,
+    status: Status,
+    note: string,
+    expectedRevision: number,
+  ): Promise<number> {
     if (preview) {
       const all = readDemo();
       // Preview samples can be dated ahead of the device clock. Append new
@@ -397,6 +420,7 @@ function Board() {
               ...q,
               status,
               moderator_note: note,
+              revision: q.revision + 1,
               answered_at:
                 status === "answered"
                   ? q.status === "answered"
@@ -416,15 +440,21 @@ function Board() {
       );
       saveDemo(next);
       setQuestions(next);
-      return;
+      return next.find((q) => q.id === id)!.revision;
     }
-    const { error } = await supabase!.rpc("moderate_question", {
+    const { data, error } = await supabase!.rpc("moderate_question", {
       p_id: id,
       p_status: status,
       p_note: note,
+      p_expected_revision: expectedRevision,
     });
+    if (error?.code === "40001") {
+      await refresh().catch(() => undefined);
+      throw new Error(uiText.staleUpdate);
+    }
     if (error) throw error;
     await refresh();
+    return data;
   }
   async function login(e: React.FormEvent) {
     e.preventDefault();
@@ -914,7 +944,7 @@ function KioskRoute() {
 }
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         <Route path="/" element={<Board />} />
         <Route path="/privacy" element={<PrivacyPage />} />

@@ -1,5 +1,5 @@
 import { statusLabels, uiText } from "../lib/event";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, EyeOff, Star } from "lucide-react";
 import { StatusBadge } from "./QuestionCard";
 import type { Question, Status } from "../types";
@@ -10,18 +10,35 @@ export function ModeratorCard({
 }: {
   question: Question;
   similarQuestions: Question[];
-  onUpdate: (id: string, status: Status, note: string) => Promise<void>;
+  onUpdate: (
+    id: string,
+    status: Status,
+    note: string,
+    expectedRevision: number,
+  ) => Promise<number>;
 }) {
   const [note, setNote] = useState(q.moderator_note || "");
+  const [draftRevision, setDraftRevision] = useState(q.revision);
+  const [noteDirty, setNoteDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState("");
+  const hasConflict = noteDirty && q.revision !== draftRevision;
+  useEffect(() => {
+    if (!noteDirty && q.revision !== draftRevision) {
+      setDraftRevision(q.revision);
+      setNote(q.moderator_note || "");
+    }
+  }, [q.revision, q.moderator_note, noteDirty, draftRevision]);
   async function update(status: Status) {
     setBusy(true);
     setError("");
     setSaved("");
     try {
-      await onUpdate(q.id, status, note);
+      const revision = await onUpdate(q.id, status, note, draftRevision);
+      setDraftRevision(revision);
+      setNote(note.trim());
+      setNoteDirty(false);
       setSaved(uiText.noteSaved);
     } catch (e) {
       setError(e instanceof Error ? e.message : uiText.saveFailed);
@@ -68,14 +85,33 @@ export function ModeratorCard({
         id={`note-${q.id}`}
         value={note}
         maxLength={5000}
-        onChange={(e) => setNote(e.target.value)}
+        onChange={(e) => {
+          setNote(e.target.value);
+          setNoteDirty(true);
+        }}
         placeholder={uiText.moderatorNotePlaceholder}
         rows={2}
       />
+      {hasConflict && (
+        <div className="error" role="alert">
+          {uiText.staleUpdate}{" "}
+          <button
+            className="button subtle small"
+            onClick={() => {
+              setNote(q.moderator_note || "");
+              setNoteDirty(false);
+              setDraftRevision(q.revision);
+              setError("");
+            }}
+          >
+            {uiText.reloadLatest}
+          </button>
+        </div>
+      )}
       <div className="moderation-actions">
         {q.status !== "approved" && (
           <button
-            disabled={busy}
+            disabled={busy || hasConflict}
             className="button primary small"
             onClick={() => update("approved")}
           >
@@ -85,7 +121,7 @@ export function ModeratorCard({
         )}
         {q.status !== "shortlisted" && (
           <button
-            disabled={busy}
+            disabled={busy || hasConflict}
             className="button secondary small"
             onClick={() => update("shortlisted")}
           >
@@ -95,7 +131,7 @@ export function ModeratorCard({
         )}
         {q.status !== "answered" && (
           <button
-            disabled={busy}
+            disabled={busy || hasConflict}
             className="button secondary small"
             onClick={() => update("answered")}
           >
@@ -105,7 +141,7 @@ export function ModeratorCard({
         )}
         {q.status !== "hidden" && (
           <button
-            disabled={busy}
+            disabled={busy || hasConflict}
             className="button subtle small"
             onClick={() => update("hidden")}
           >
@@ -114,16 +150,18 @@ export function ModeratorCard({
           </button>
         )}
         <button
-          disabled={busy}
+          disabled={busy || hasConflict}
           className="button subtle small"
           onClick={() => update(q.status)}
         >
           {uiText.saveNote}
         </button>
       </div>
-      <div className="error" role="alert">
-        {error}
-      </div>
+      {!hasConflict && (
+        <div className="error" role="alert">
+          {error}
+        </div>
+      )}
       <div className="success" role="status">
         {saved}
       </div>
