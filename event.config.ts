@@ -1,62 +1,83 @@
 import type { EventConfig } from "./src/lib/event";
 
-// Customize this deployment's event here. Uncomment only the fields you need.
-// Omitted (or undefined) fields use the defaults in src/lib/demo.ts in preview.
-// With Supabase, omitted details use the selected database event's values.
-// This file is bundled into the public app: do not put secrets here.
-
+// Design and event details: https://phiz.ca/2026-symposium/
+// Public frontend configuration; keep credentials out of this file.
 const eventConfig: EventConfig = {
-  // name: "My Conference",
-  // slug: "my-conference", // Used by /, /moderator, and /e/my-conference.
-  // description: "A place for attendees to ask questions and share ideas.",
-  // starts_at: "2026-11-20T09:00:00Z", // ISO 8601; displayed in UTC.
-  // ends_at: "2026-11-20T17:00:00Z",
-  // is_active: true, // false disables the attendee submission form.
-  // Use null for description or dates to hide them; false is not a fallback.
-  // In Supabase, create an event with the same slug and close it in the DB too.
+  name: "2026 AI Symposium",
+  // Retain the existing event URL and database lookup slug.
+  slug: "public-health-ai-symposium",
+  description:
+    "Hosted by Wellington-Dufferin-Guelph Public Health.",
+  // November 20 is Eastern Standard Time (UTC−5). The hero displays the date in UTC.
+  starts_at: "2026-11-20T13:30:00Z",
+  ends_at: "2026-11-20T21:30:00Z",
+  is_active: true,
 
-  // Optional sessions for local preview. Omit for one shared question list.
-  // Connected events load sessions from events.sessions in Supabase (see README).
-  // Use stable, unique IDs. Times are ISO 8601 and displayed in UTC.
+  // Official program, November 20, 2026 (Eastern Standard Time, UTC−5).
+  // End times follow the next published break, lunch, or adjournment.
+  // Local preview uses this array. For a connected deployment, copy the same
+  // sessions into this event's events.sessions field in Supabase (see README).
+  // Keep IDs stable once questions have been submitted to a session.
   sessions: [
-    //  {
-    //    id: "opening-panel",
-    //    title: "Opening panel",
-    //    description: "Questions for our opening speakers.",
-    //    starts_at: "2026-11-20T09:00:00Z",
-    //    ends_at: "2026-11-20T10:00:00Z", // Optional.
-    //  },
-    //  {
-    //    id: "closing-panel",
-    //    title: "Closing panel",
-    //    description: "Reflections and next steps.",
-    //    starts_at: "2026-11-20T16:00:00Z",
-    //  },
+    {
+      id: "plenary-1",
+      title: "Plenary 1 · The Strategic Direction of Public Health",
+      description:
+        "A discussion of where the sector is headed and what AI and automation mean for its future. · Moderator: Dr. Michelle Murti.",
+      starts_at: "2026-11-20T15:45:00Z",
+      ends_at: "2026-11-20T17:05:00Z",
+    },
+    {
+      id: "plenary-2",
+      title: "Plenary 2 · Public Health Units in Practice: AI on the Ground",
+      description:
+        "Real deployments and lessons from Ontario health units using AI today. · Moderator: Dr. Hsiu-Li Wang.",
+      starts_at: "2026-11-20T18:00:00Z",
+      ends_at: "2026-11-20T19:15:00Z",
+    },
+    {
+      id: "plenary-3",
+      title:
+        "Plenary 3 · Academic Leaders: Research Perspectives on AI in Public Health",
+      description:
+        "Research perspectives on population-scale sensing and surveillance, generative AI, and synthetic data for population health. · Moderator: Dr. Mustafa Hirji.",
+      starts_at: "2026-11-20T19:35:00Z",
+      ends_at: "2026-11-20T20:50:00Z",
+    },
+    {
+      id: "future-readiness",
+      title: "Panel · Future Readiness",
+      description:
+        "Practical first steps for moving from interest to implementation. · Moderator: Dr. Matthew Tenenbaum.",
+      starts_at: "2026-11-20T21:00:00Z",
+      ends_at: "2026-11-20T21:30:00Z",
+    },
   ],
-
-  // UI copy overrides apply throughout this deployment, in both modes.
-  // Every available key and its default wording is in src/lib/demo.ts: demoText.
-  // Override only what you need; omitted/undefined keys keep their defaults.
-  // Empty strings are allowed. Text is plain text, not HTML.
-  // Use \n for line breaks in attendeeHeading and attendeeAside.
-  // Kiosk invitation/closed headings and empty-state heading/text also support \n.
-  // kioskQuestionCount supports {count}, replaced with the public question count.
   text: {
-    //  brandTagline: "YOUR QUESTIONS. OUR NEXT CHAPTER.",
-    //  attendeeHeading: "Welcome to our conference.",
-    //  attendeeAside: "A space for\nnew perspectives.",
-    //  questionHeading: "What would you like to ask?",
-    //  questionPlaceholder: "Share a question for the speakers…",
-    //  submitQuestion: "Send question",
-    //  guidancePanel: "Our hosts will discuss your questions during the Q&A.",
-    //  moderatorHeading: "Prepare the Q&A.",
-    //  openKiosk: "Launch audience display",
-    //  kioskHeading: "Questions from our community.",
-    //  kioskInvitationHeading: "Have a question?\nMake it heard.",
-    //  kioskInvitationText: "Scan to ask our speakers or vote for a question.",
-    //  kioskQuestionCount: "{count} community questions",
-    //  kioskScanToJoin: "Scan to take part",
-    //  footerMessage: "Thanks for joining us.",
+    brandTagline: "PHIZ · 2026 AI SYMPOSIUM",
+    attendeeHeading:
+      "The Future of Public Health:\nAI, Automation & What's Next",
+    attendeeAside: "Innovate. Collaborate.\nLead the future.",
+    sessionLabel: "Choose a session",
+    questionEyebrow: "JOIN THE DISCUSSION",
+    questionIntro: "Share a question for the panelists.",
+    questionPlaceholder:
+      "What would you like the panel to discuss?",
+    guidancePanel:
+      "Moderators will review submissions and select questions for discussion with our speakers and panelists.",
+    boardHeading: "Questions so far",
+    moderatorIntro:
+      "Review audience questions and prepare the conversation with our speakers and panelists.",
+    kioskHeading: "The future of public health.",
+    kioskInvitationEyebrow: "2026 AI SYMPOSIUM",
+    kioskInvitationHeading: "Ask. Share.\nLook forward.",
+    kioskInvitationText:
+      "Scan to ask our speakers a question or vote for the topics you want to explore.",
+    kioskEmptyHeading: "Help shape\nthe discussion.",
+    kioskEmptyText:
+      "Scan the code to share your question.\nQuestions appear here after review.",
+    footerMessage:
+      "2026 AI Symposium · Wellington-Dufferin-Guelph Public Health",
   },
 };
 
