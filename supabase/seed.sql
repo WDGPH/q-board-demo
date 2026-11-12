@@ -4,7 +4,7 @@ insert into auth.users(id, aud, role, is_anonymous, created_at, updated_at)
 select ('00000000-0000-4000-8000-' || lpad(n::text,12,'0'))::uuid, 'authenticated','authenticated',true,now(),now()
 from generate_series(1,6) n on conflict(id) do nothing;
 insert into public.events(id,name,slug,description,starts_at,ends_at,is_active)
-values('10000000-0000-4000-8000-000000000001','Public Health AI Symposium','public-health-ai-symposium','Bringing public health and artificial intelligence into conversation.','2026-11-20 09:00:00+00','2026-11-20 17:00:00+00',true)
+values('10000000-0000-4000-8000-000000000001','Public Health AI Symposium','dev-event','Bringing public health and artificial intelligence into conversation.','2026-11-20 09:00:00+00','2026-11-20 17:00:00+00',true)
 on conflict(id) do nothing;
 insert into public.questions(id,event_id,submitter_id,question_text,status,moderator_note,created_at,approved_at,shortlisted_at,answered_at)
 select ('20000000-0000-4000-8000-' || lpad(n::text,12,'0'))::uuid,'10000000-0000-4000-8000-000000000001',

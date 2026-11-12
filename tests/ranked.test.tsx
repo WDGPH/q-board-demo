@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import App from "../src/App";
-import { initialDemo, readDemo, saveDemo } from "../src/lib/demo";
+import { demoEvent, initialDemo, readDemo, saveDemo } from "../src/lib/demo";
 
 vi.mock("../src/lib/supabase", () => ({
   preview: true,
@@ -118,14 +118,14 @@ it("preserves selected sessions through dashboard links, direct reloads, and gen
   window.history.replaceState(
     {},
     "",
-    "/moderator/public-health-ai-symposium?session=closing",
+    `/moderator/${demoEvent.slug}?session=closing`,
   );
   const user = userEvent.setup();
   const view = render(<App />);
   const link = await screen.findByRole("link", { name: "Open ranked view" });
   expect(link).toHaveAttribute(
     "href",
-    "/moderator/public-health-ai-symposium/ranked?session=closing",
+    `/moderator/${demoEvent.slug}/ranked?session=closing`,
   );
   await user.click(link);
   expect(
@@ -159,7 +159,7 @@ it("preserves selected sessions through dashboard links, direct reloads, and gen
   ).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Moderator panel" })).toHaveAttribute(
     "href",
-    "/moderator/public-health-ai-symposium?session=",
+    `/moderator/${demoEvent.slug}?session=`,
   );
 });
 
@@ -171,11 +171,7 @@ it("opens the kiosk on general questions when selected by the moderator", async 
       ...(i === 4 ? { status: "approved" as const } : {}),
     })),
   );
-  window.history.replaceState(
-    {},
-    "",
-    "/moderator/public-health-ai-symposium?session=",
-  );
+  window.history.replaceState({}, "", `/moderator/${demoEvent.slug}?session=`);
   const user = userEvent.setup();
   render(<App />);
 
