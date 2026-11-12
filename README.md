@@ -36,14 +36,14 @@ Before the first browser test, run `npx playwright install chromium`. Browser te
    values ('FIRST_AUTH_USER_UUID'), ('SECOND_AUTH_USER_UUID');
    ```
 
-6. Copy the project URL and public anon key into `.env`:
+6. Copy the project URL and publishable key into `.env`:
 
    ```dotenv
    VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-   VITE_SUPABASE_ANON_KEY=YOUR_PUBLIC_ANON_KEY
+   VITE_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
    ```
 
-   The frontend must never contain a service-role/secret key. Environment files are ignored by Git. Restart Vite after changing environment variables.
+   This is a Vite app, so `NEXT_PUBLIC_` variable names are not used. Existing deployments can continue using `VITE_SUPABASE_ANON_KEY` as a fallback; the publishable key takes precedence. The frontend must never contain a service-role/secret key. Environment files are ignored by Git. Restart Vite after changing environment variables.
 7. Open `/` to create an anonymous attendee session. Open `/moderator` to sign in with a provisioned moderator account.
 
 An anonymous attendee’s identity persists in browser storage. Clearing it, using private browsing, or changing browsers creates another identity. The five-question cap is per identity per event, not proof of a unique human. Supabase’s anonymous-auth abuse controls can be configured by the organizer if needed.
@@ -165,36 +165,35 @@ Q Board is a static Vite app; no application server is required. Vercel and GitH
 
 ### Supabase production settings
 
-Set **both** `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in the deployment platform’s build environment. The values are embedded into the frontend at build time, so redeploy after changing them. The anon key is intended for public clients; never use a service-role key in the frontend.
+Set **both** `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in the deployment platform’s build environment. The GitHub Pages workflow already includes this deployment's public values. The values are embedded into the frontend at build time, so redeploy after changing them. Publishable keys are intended for public clients; never use a service-role/secret key in the frontend. `VITE_SUPABASE_ANON_KEY` remains supported for existing deployments.
 
-In Supabase, open **Authentication → URL Configuration** and set **Site URL** to the deployed app URL. For a GitHub Pages project site, this includes the repository path, for example `https://OWNER.github.io/REPOSITORY/`; for a user or organization site, use `https://OWNER.github.io/`. Add the deployed URL and any auth email callback URLs to **Redirect URLs**. If moderator recovery links should open the password-change page, allow the corresponding `/moderator/password` URL under the deployed base path. If both hosting options are active, allowlist both hosts.
+In Supabase, open **Authentication → URL Configuration** and set **Site URL** to `https://qboard.phiz.ca`. Add `https://qboard.phiz.ca` and `https://qboard.phiz.ca/moderator/password` to **Redirect URLs** so moderator recovery links can open the password-change page. If using another deployment, use its actual URL and allowlist its auth callback URLs too.
 
 ### Vercel
 
 1. Push the repository to your Git host and import it into Vercel.
 2. Choose the Vite preset: build command `npm run build`, output directory `dist`.
-3. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to the Vercel production environment.
+3. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` to the Vercel production environment.
 4. Deploy. `vercel.json` provides SPA rewrites so direct event and moderator links work.
 5. For a custom domain, add it in Vercel’s domain settings, apply the provided DNS records, and update the Supabase URL configuration above.
 6. Verify that the local-preview banner is absent, then carry out the launch checks below.
 
 ### GitHub Pages
 
-The workflow in `.github/workflows/deploy-pages.yml` deploys the `main` branch to a GitHub Pages **project site** at `https://OWNER.github.io/REPOSITORY/`. It also supports manual runs from the Actions tab. Its Vite base path and SPA fallback support app routes such as `/e/SLUG` and `/moderator` under that repository path.
-
-For `q-board-demo`, deploying without Supabase variables is deliberate: the site demonstrates the local-preview experience, with sample data stored in each visitor’s browser and intentionally open moderator access. This is a demo, not a production-connected event. For a production deployment, set both Supabase variables before publishing.
+The workflow in `.github/workflows/deploy-pages.yml` deploys the `main` branch to `https://qboard.phiz.ca` with the Supabase backend at `https://nsjmcxvorzzjxprwairz.supabase.co`. It also supports manual runs from the Actions tab. The build uses `/` as its base path, and `404.html` serves the app for direct links such as `/e/SLUG` and `/moderator`.
 
 1. In the repository, open **Settings → Pages** and set the build and deployment source to **GitHub Actions**.
-2. Open **Settings → Secrets and variables → Actions → Variables** and add `ENABLE_GITHUB_PAGES` with the exact value `true`. The workflow skips its build unless this repository variable is enabled.
-3. For a connected deployment, add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as Actions repository variables there as well. The workflow passes them into the Vite build. If both are absent, the deliberate local-preview demo mode runs instead of connecting to Supabase.
-4. Push to `main` or run **Deploy QBoard to GitHub Pages** from the Actions tab. Confirm the deployment completes, then configure the deployed URL in Supabase as described above.
-5. In demo mode, expect the local-preview banner. For a production-connected deployment, verify the banner is absent, then carry out the launch checks below.
+2. In **Settings → Pages → Custom domain**, save `qboard.phiz.ca`. For this custom Actions workflow, GitHub uses the repository's Pages setting rather than a `CNAME` file.
+3. At the DNS provider for `phiz.ca`, point the `qboard` CNAME record to `wdgph.github.io`. After GitHub verifies the domain and provisions the certificate, enable **Enforce HTTPS**.
+4. No Actions secrets or repository variables are needed for the current frontend workflow. Its build environment already contains the project URL and publishable key. There is no `ENABLE_GITHUB_PAGES` switch.
+5. Apply the database migrations and configure Supabase Auth as described above. The frontend workflow does not apply migrations.
+6. Push to `main` or run **Deploy QBoard to GitHub Pages** from the Actions tab. Verify the local-preview banner is absent, then carry out the launch checks below.
 
-The current Pages workflow assumes the standard project-site URL `OWNER.github.io/REPOSITORY/`. A user or organization site at `OWNER.github.io/`, or a custom domain serving from its root, needs a different Vite base path before deployment. Other static hosts can also serve `dist/` if all app routes fall back to `index.html`.
+To deploy under a repository path such as `OWNER.github.io/REPOSITORY/` instead, change the workflow's Vite base path to `/REPOSITORY/`. Other static hosts can also serve `dist/` if all app routes fall back to `index.html`.
 
 ## Validation and launch checks
 
-`npm test` runs the actual migration inside PGlite (embedded PostgreSQL), with an `auth.uid()` shim and the `authenticated`/`anon` roles. Tests exercise the real grants, RLS expressions, constraints, and functions, including forbidden moderation, note privacy, pending/hidden visibility, duplicate voting, five-question enforcement, status transitions, and repeatable seeds. This verifies database authorization but does **not** exercise hosted Supabase Auth, its REST API, or deployment configuration.
+`npm test` runs the actual migrations inside PGlite (embedded PostgreSQL), with an `auth.uid()` shim, the `authenticated`/`anon` roles, and a minimal Realtime shim that captures broadcasts locally. Tests exercise the real grants, RLS expressions, constraints, and functions, including forbidden moderation, note privacy, pending/hidden visibility, duplicate voting, five-question enforcement, status transitions, and repeatable seeds. This verifies database authorization but does **not** exercise hosted Supabase Auth, Realtime delivery, its REST API, or deployment configuration.
 
 Browser tests cover preview submission → approval → upvote → shortlist → answered → CSV, persistence after reload, and 360px overflow checks.
 
