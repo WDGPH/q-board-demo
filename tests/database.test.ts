@@ -17,6 +17,28 @@ beforeAll(async () => {
   await db.exec(
     `create role anon; create role authenticated; create schema auth; create table auth.users(id uuid primary key, aud text, role text, is_anonymous boolean, created_at timestamptz, updated_at timestamptz); create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$; grant usage on schema auth to authenticated, anon; grant execute on function auth.uid() to authenticated, anon;`,
   );
+  // Hosted Supabase provides these Realtime objects. Capture broadcasts locally
+  // so the real migration and question triggers can run in embedded PostgreSQL.
+  await db.exec(`
+    create schema realtime;
+    create table realtime.messages (topic text, payload jsonb);
+    alter table realtime.messages enable row level security;
+    create function realtime.topic() returns text language sql stable as $$
+      select nullif(current_setting('realtime.topic', true), '')
+    $$;
+    create function realtime.broadcast_changes(
+      topic_name text, event_name text, operation text, table_name text,
+      table_schema text, new_record anyelement, old_record anyelement
+    ) returns void language plpgsql as $$
+    begin
+      insert into realtime.messages(topic, payload)
+      values (topic_name, jsonb_build_object(
+        'event', event_name, 'operation', operation,
+        'record', to_jsonb(new_record), 'old_record', to_jsonb(old_record)
+      ));
+    end;
+    $$;
+  `);
   await db.exec(
     readFileSync("supabase/migrations/202609150001_initial.sql", "utf8"),
   );
