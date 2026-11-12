@@ -108,7 +108,7 @@ export function ModeratorCard({
             {uiText.shortlist}
           </button>
         )}
-        {q.status !== "answered" && (
+        {(q.status === "approved" || q.status === "shortlisted") && (
           <button
             disabled={busy || hasConflict}
             className="button secondary small"
