@@ -65,6 +65,7 @@ const eventConfig: EventConfig = {
     kioskInvitationText:
       "Scan to ask a question or vote for the topics you want to hear more about.",
     kioskEmptyHeading: "Help shape\nthe discussion.",
+    kioskAllSessions: "Questions from the room",
     footerMessage:
       "2026 AI Symposium · Wellington-Dufferin-Guelph Public Health",
   },
