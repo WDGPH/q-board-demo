@@ -110,6 +110,74 @@ it("keeps previous vote on failure", async () => {
   expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "false");
   expect(screen.getByRole("alert")).toHaveTextContent("Vote failed");
 });
+describe("moderator answer action", () => {
+  it.each([
+    ["pending", false],
+    ["hidden", false],
+    ["answered", false],
+    ["approved", true],
+    ["shortlisted", true],
+  ] as const)("shows the answer action for %s: %s", (status, visible) => {
+    render(
+      <ModeratorCard
+        question={{ ...initialDemo()[0], status }}
+        onUpdate={vi.fn()}
+      />,
+    );
+    const button = screen.queryByRole("button", { name: "Mark answered" });
+    if (visible) {
+      expect(button).toBeEnabled();
+    } else {
+      expect(button).not.toBeInTheDocument();
+    }
+  });
+
+  it.each(["approved", "shortlisted"] as const)(
+    "marks a %s question answered with its loaded revision",
+    async (status) => {
+      const question = { ...initialDemo()[0], status, revision: 7 };
+      const onUpdate = vi.fn().mockResolvedValue(8);
+      render(<ModeratorCard question={question} onUpdate={onUpdate} />);
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Mark answered" }),
+      );
+
+      expect(onUpdate).toHaveBeenCalledExactlyOnceWith(
+        question.id,
+        "answered",
+        question.moderator_note || "",
+        7,
+      );
+    },
+  );
+
+  it.each(["hidden", "pending"] as const)(
+    "removes the answer action when a public question becomes %s",
+    (status) => {
+      const question = { ...initialDemo()[0], status: "approved" as const };
+      const onUpdate = vi.fn();
+      const { rerender } = render(
+        <ModeratorCard question={question} onUpdate={onUpdate} />,
+      );
+      expect(
+        screen.getByRole("button", { name: "Mark answered" }),
+      ).toBeEnabled();
+
+      rerender(
+        <ModeratorCard
+          question={{ ...question, status, revision: question.revision + 1 }}
+          onUpdate={onUpdate}
+        />,
+      );
+
+      expect(
+        screen.queryByRole("button", { name: "Mark answered" }),
+      ).not.toBeInTheDocument();
+      expect(onUpdate).not.toHaveBeenCalled();
+    },
+  );
+});
 it("blocks a stale moderator draft until the latest note is reloaded", async () => {
   const question = initialDemo()[0];
   const onUpdate = vi.fn().mockResolvedValue(3);
