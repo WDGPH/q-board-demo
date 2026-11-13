@@ -27,7 +27,7 @@ Before the first browser test, run `npx playwright install chromium`. Browser te
 
 1. Create a Supabase project.
 2. Under **Authentication → Providers / Sign In**, enable anonymous sign-ins. Enable email/password authentication for moderators. Disable public email sign-ups once you have created your moderator accounts; anonymous sign-ins are a separate setting.
-3. Execute all files in [supabase/migrations](supabase/migrations) in filename order in the SQL editor as the database owner, once per database. Keep subsequent schema changes in new migration files. The SQL is also compatible with the Supabase CLI migration workflow.
+3. Apply [the migration runbook](#database-and-app-deployment-runbook) as the database owner. A new database needs all four migrations in filename order. Existing databases need only reviewed, unapplied migrations. Keep subsequent changes in new migration files. The SQL also supports the Supabase CLI migration workflow.
 4. In a **development project only**, execute [seed.sql](supabase/seed.sql). It creates an event, 10 questions across all statuses, six synthetic identities with no login credentials, and sample votes. It is safe to rerun. For production, create an empty event using the SQL below instead.
 5. Create at least two email/password users using the Auth dashboard. Confirm their emails through the dashboard, then add their UUIDs as moderators:
 
@@ -55,6 +55,8 @@ Edit [event.config.ts](event.config.ts) at the repository root to customize an e
 Before deployment, configure [privacy.config.json](privacy.config.json) with accurate values for your organization and event, including the privacy contact, contact email, hosting environment, Supabase region, data-retention period, and policy update date. These values populate the privacy statement in [PRIVACY.md](PRIVACY.md); the checked-in values are examples and must not be used as-is. Review the statement itself and update its wording if it does not accurately describe your deployment and data practices.
 
 With Supabase, create an event with the configured slug (or the demo slug when omitted). The config selects the default event and overrides its provided details; omitted details retain the database values. Explicit links to other database events retain their own details. Database IDs and questions remain tied to the database event. To close a connected event, also set `is_active = false` in Supabase; frontend configuration does not change database permissions or update database records. Dates do not automatically open or close events.
+
+The preview default and development seed use `dev-event`. Set an explicit deployment slug in `event.config.ts` before production use. Existing databases retain their stored slugs. Rerunning the seed does not rename an existing event. Review any development event rename separately. Keep production event configuration when copying updates into another repository.
 
 The optional `text` section overrides standard component copy in both preview and connected mode. All keys and their current default wording are in `demoText` in [src/lib/demo.ts](src/lib/demo.ts), including headings, guidance, form labels, placeholders, buttons, status labels, accessibility labels, empty states, and app-generated messages. Override any subset; omitted or `undefined` keys use the defaults, while `""` intentionally clears text. Copy is plain text; `attendeeHeading` and `attendeeAside` support `\n` line breaks. Event descriptions still use `description`. These text overrides apply throughout the deployment, including explicit links to other events; they do not change limits, polling intervals, status values, or database error messages.
 
@@ -110,7 +112,7 @@ Leave `sessions` out of the configuration for the existing single question list.
 
 When the board loads, it uses the device clock to select the current session (the latest start wins if sessions overlap), then the earliest upcoming session, or the most recently started session if none remain. Manual choices stay selected while the board is open. Sessions with an elapsed `ends_at` are muted and labeled **Ended**, but remain selectable; this status refreshes every 30 seconds. Sessions without an end time are not marked ended. Supply end times for reliable defaults between sessions.
 
-For connected events, apply [the sessions migration](supabase/migrations/202610080001_sessions.sql), then set `events.sessions` in Supabase. **Connected mode always uses database sessions**, including for the default event; the frontend `sessions` setting is for preview only. This keeps the choices and database validation in sync and lets explicit event links have their own sessions. For example:
+For connected events, apply [the sessions migration](supabase/migrations/202610080001_sessions.sql), then set `events.sessions` in Supabase. **Connected mode always uses database sessions**, including for the default event; the frontend `sessions` setting is for preview only. This keeps the choices and database validation in sync and lets explicit event links have their own sessions. Replace `public-health-ai-symposium` in both SQL examples below with your event slug. Use `dev-event` for a newly seeded development database. For example:
 
 ```sql
 update public.events
@@ -161,7 +163,84 @@ References: [Supabase anonymous sign-ins](https://supabase.com/docs/guides/auth/
 
 ## Deploy
 
-Q Board is a static Vite app; no application server is required. Vercel and GitHub Pages are both supported deployment options. For either option, run all migrations in the production Supabase project and create the event and moderator users as described above. Do not load development seeds into production.
+Q Board is a static Vite app; no application server is required. Vercel and GitHub Pages are supported deployment options. Follow the runbook below before either deployment. Create the event and moderators as described above. Use development seeds only in development databases.
+
+### Database and app deployment runbook
+
+Record the app commit, applied migration filenames, execution times, operator, and deployment result together. Keep this record with the deployment records. The SQL-editor workflow does not maintain an applied-migration ledger automatically. Schema checks cannot reconstruct that history.
+
+| Order | Migration | Required result |
+|---|---|---|
+| 1 | `202609150001_initial.sql` | Tables, grants, RLS, submission limit, and initial RPCs |
+| 2 | `202610080001_sessions.sql` | Database sessions, session guards, and session-aware listing |
+| 3 | `202610270001_answered_order.sql` | Answer restore status and updated RPCs |
+| 4 | `202611090001_questions_realtime.sql` | Revision checks, Broadcast triggers, and current RPC signatures |
+
+Migration 4 removes `moderate_question(uuid,text,text)`. The current app calls `moderate_question(uuid,text,text,bigint)` and expects a saved revision. An older app cannot moderate against migration 4. The current app requires migration 4. Confirm the deployment sequence before applying it to an existing deployment.
+
+#### Prepare the release
+
+1. Record the candidate app commit and the currently deployed commit.
+2. Review the database's applied-migration record.
+3. Compare any uncertain database state with the checked-in migrations.
+4. Resolve unknown or partial migration states before proceeding.
+5. Review each pending migration against every deployed app that uses the database.
+6. Agree a coordinated app and database cutover when existing signatures will disappear.
+7. Preserve the deployment's event configuration, styling, and approved privacy values.
+8. Set the intended event slug explicitly in `event.config.ts`.
+9. Keep `.gitignore` and the environment template in deployment repositories.
+10. Run the release checks from a clean checkout:
+
+    ```bash
+    npm ci --no-audit --no-fund
+    npm test
+    npm run build
+    ```
+
+11. Resolve install, test, or build failures before deployment.
+
+#### Apply and inspect the database
+
+1. Apply reviewed, unapplied migrations in filename order as the database owner.
+2. For SQL-editor use, execute each pending file inside one explicit transaction.
+3. Run `BEGIN`, the complete file, and `COMMIT` together.
+4. On failure, roll back the transaction before investigating.
+5. Record the migration as applied only after its transaction commits.
+6. Run the first query in [preflight.sql](supabase/checks/preflight.sql).
+7. Stop if any `ok` value is false.
+8. Compare reported function, policy, trigger, constraint, and default definitions with the migration files.
+9. Resolve unexpected definitions before proceeding.
+10. Set the second query's slug to the deployment's configured slug.
+11. Run that event query only after the schema checks pass and definitions match.
+12. Confirm `event_exists` is true.
+13. Confirm the database active flag matches the intended submission state.
+14. Compare session order, IDs, titles, descriptions, start times, and end times with the event plan.
+
+Connected mode uses database sessions. The frontend session array controls preview only. An empty database session array means one question list. The preflight reads metadata and event configuration only. It does not read questions, votes, or moderator notes. Its `ok` flags check structure and RPC contracts. They do not certify function bodies or policy expressions. Review the reported definitions separately.
+
+Existing migrations are not safe to replay blindly. Add future changes in new files with explicit transactions. Validate existing definitions before skipping objects during a deliberate rerun. For future RPC changes, retain compatible signatures until every calling app has moved.
+
+#### Deploy and verify
+
+1. Deploy the checked app build with the deployment's configured Supabase settings.
+2. Record the deployed app commit and the database migration state.
+3. Confirm the preview banner is absent.
+4. Confirm two provisioned moderators can sign in.
+5. Submit a synthetic question from a separate attendee profile.
+6. Confirm the pending question remains private.
+7. Approve it as a moderator.
+8. Confirm it appears for attendees.
+9. Check shortlist, answer, and note saves.
+10. Reload the moderator page to confirm those changes persist.
+11. Confirm private notes remain absent from the attendee board and kiosk.
+12. Use two moderator profiles to check realtime delivery.
+13. Watch the second profile receive a `question_changed` Broadcast frame when the first saves a question.
+14. Confirm the second profile updates.
+15. Record the smoke-test result with the deployment record.
+
+Polling can conceal broken Broadcast delivery. The PGlite shim verifies local trigger behavior only. It does not verify hosted Auth, channel authorization, REST routing, or realtime delivery. Confirm Auth providers and redirect URLs in the hosting setup.
+
+For rollback, use an app compatible with the current database. After migration 4, an app using three moderation arguments remains incompatible. Stop deployment when no tested compatible rollback exists. Review a separate recovery change instead of removing revision checks.
 
 ### Supabase production settings
 

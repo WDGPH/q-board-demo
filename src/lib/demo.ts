@@ -2,7 +2,7 @@ import type { Event, Question } from "../types";
 export const demoEvent: Event = {
   id: "demo",
   name: "Public Health AI Symposium",
-  slug: "public-health-ai-symposium",
+  slug: "dev-event",
   description:
     "Bringing public health and artificial intelligence into conversation.",
   starts_at: "2026-11-20T09:00:00Z",

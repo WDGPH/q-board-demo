@@ -2,6 +2,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync } from "node:fs";
 import { beforeAll, afterAll, describe, it, expect } from "vitest";
+import { demoEvent } from "../src/lib/demo";
 const db = new PGlite();
 const attendee = "00000000-0000-4000-8000-000000000011";
 const other = "00000000-0000-4000-8000-000000000012";
@@ -320,6 +321,13 @@ describe.sequential(
       await db.exec(seed);
       expect(
         (
+          await db.query<{ slug: string }>(
+            "select slug from public.events where id='10000000-0000-4000-8000-000000000001'",
+          )
+        ).rows,
+      ).toEqual([{ slug: demoEvent.slug }]);
+      expect(
+        (
           await db.query(
             "select id from public.questions where event_id='10000000-0000-4000-8000-000000000001'",
           )
@@ -328,6 +336,162 @@ describe.sequential(
     });
   },
 );
+
+describe.sequential("deployment preflight", () => {
+  const [schemaSql, eventSql] = readFileSync(
+    "supabase/checks/preflight.sql",
+    "utf8",
+  ).split("-- Event configuration\n");
+  type Check = { check_id: string; ok: boolean; details: string | null };
+
+  it("passes after all migrations and reads the seeded event in a read-only transaction", async () => {
+    await db.exec("reset role; begin read only");
+    try {
+      const checks = await db.query<Check>(schemaSql);
+      expect(checks.rows.length).toBeGreaterThan(60);
+      expect(checks.rows.filter((check) => !check.ok)).toEqual([]);
+      const events = await db.query(eventSql);
+      expect(events.rows).toEqual([
+        expect.objectContaining({
+          configured_slug: demoEvent.slug,
+          event_exists: true,
+          is_active: true,
+          session_id: null,
+        }),
+      ]);
+    } finally {
+      await db.exec("rollback");
+    }
+  });
+
+  it("reports missing objects on an empty database without calling application functions", async () => {
+    const empty = new PGlite();
+    try {
+      const checks = await empty.query<Check>(schemaSql);
+      expect(checks.rows).toContainEqual(
+        expect.objectContaining({
+          check_id: "table.public.questions",
+          ok: false,
+        }),
+      );
+      expect(checks.rows).toContainEqual(
+        expect.objectContaining({ check_id: "auth.objects", ok: false }),
+      );
+    } finally {
+      await empty.close();
+    }
+  });
+
+  it("rejects the legacy moderation signature and incorrect named RPC arguments", async () => {
+    await db.exec("reset role; begin");
+    try {
+      await db.exec(`
+        alter function public.moderate_question(uuid,text,text,bigint) rename to original_moderation;
+        create function public.moderate_question(p_id uuid,p_status text,p_note text)
+          returns void language sql as $$ select 1 $$;
+        create function public.moderate_question(id uuid,status text,note text,revision bigint)
+          returns bigint language sql security definer set search_path = '' as $$ select 1::bigint $$;
+        revoke all on function public.moderate_question(uuid,text,text,bigint) from public, anon;
+        grant execute on function public.moderate_question(uuid,text,text,bigint) to authenticated;
+      `);
+      const checks = await db.query<Check>(schemaSql);
+      for (const check_id of [
+        "rpc.public.moderate_question(uuid,text,text,bigint)",
+        "rpc.legacy_moderate_question_absent",
+      ]) {
+        expect(checks.rows).toContainEqual(
+          expect.objectContaining({ check_id, ok: false }),
+        );
+      }
+    } finally {
+      await db.exec("rollback");
+    }
+  });
+
+  it("detects missing revision protection, disabled triggers, policies, and leaked private columns", async () => {
+    await db.exec("reset role; begin");
+    try {
+      await db.exec(`
+        alter table public.questions drop column revision;
+        alter table public.questions disable trigger broadcast_question_changes;
+        drop policy questions_insert on public.questions;
+        grant select (moderator_note) on public.questions to authenticated;
+      `);
+      const checks = await db.query<Check>(schemaSql);
+      for (const check_id of [
+        "column.questions.revision",
+        "trigger.broadcast_question_changes",
+        "policy.questions_insert",
+        "private_column.moderator_note",
+      ]) {
+        expect(checks.rows).toContainEqual(
+          expect.objectContaining({ check_id, ok: false }),
+        );
+      }
+    } finally {
+      await db.exec("rollback");
+    }
+  });
+
+  it("reports the configured event as missing instead of choosing another event", async () => {
+    await db.exec("reset role; begin");
+    try {
+      await db.exec(
+        "update public.events set slug='another-event' where slug='dev-event'",
+      );
+      const result = await db.query(eventSql);
+      expect(result.rows).toEqual([
+        expect.objectContaining({
+          configured_slug: "dev-event",
+          event_exists: false,
+        }),
+      ]);
+    } finally {
+      await db.exec("rollback");
+    }
+  });
+
+  it("returns session details in database order for comparison with the event plan", async () => {
+    const sessions = [
+      {
+        id: "z-opening",
+        title: "Opening",
+        description: "First panel",
+        starts_at: "2026-11-20T09:00:00Z",
+        ends_at: "2026-11-20T10:00:00Z",
+      },
+      {
+        id: "a-closing",
+        title: "Closing",
+        description: "Last panel",
+        starts_at: "2026-11-20T16:00:00Z",
+      },
+    ];
+    await db.exec("reset role; begin");
+    try {
+      await db.query(
+        "update public.events set sessions=$1 where slug='dev-event'",
+        [JSON.stringify(sessions)],
+      );
+      const result = await db.query(eventSql);
+      expect(result.rows).toEqual(
+        sessions.map((session, index) =>
+          expect.objectContaining({
+            event_exists: true,
+            session_order: index + 1,
+            session_id: session.id,
+            session_title: session.title,
+            session_description: session.description,
+            session_starts_at: session.starts_at,
+            session_ends_at: session.ends_at ?? null,
+          }),
+        ),
+      );
+    } finally {
+      await db.exec("rollback");
+    }
+  });
+});
 
 describe.sequential("optional event sessions", () => {
   const sessionEvent = "10000000-0000-4000-8000-000000000022";
