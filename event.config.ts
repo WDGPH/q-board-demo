@@ -54,28 +54,17 @@ const eventConfig: EventConfig = {
     },
   ],
   text: {
-    brandTagline: "PHIZ · 2026 AI SYMPOSIUM",
     attendeeHeading:
       "The Future of Public Health:\nAI, Automation & What's Next",
-    attendeeAside: "Innovate. Collaborate.\nLead the future.",
+    attendeeAside: "Innovate. Collaborate.\nShape the future.",
     sessionLabel: "Choose a session",
-    questionEyebrow: "JOIN THE DISCUSSION",
+    questionEyebrow: "ASK THE PANEL",
     questionIntro: "Share a question for the panelists.",
-    questionPlaceholder:
-      "What would you like the panel to discuss?",
-    guidancePanel:
-      "Moderators will review submissions and select questions for discussion with our speakers and panelists.",
-    boardHeading: "Questions so far",
-    moderatorIntro:
-      "Review audience questions and prepare the conversation with our speakers and panelists.",
-    kioskHeading: "The future of public health.",
+    boardHeading: "Your Questions",
     kioskInvitationEyebrow: "2026 AI SYMPOSIUM",
-    kioskInvitationHeading: "Ask. Share.\nLook forward.",
     kioskInvitationText:
-      "Scan to ask our speakers a question or vote for the topics you want to explore.",
+      "Scan to ask a question or vote for the topics you want to hear more about.",
     kioskEmptyHeading: "Help shape\nthe discussion.",
-    kioskEmptyText:
-      "Scan the code to share your question.\nQuestions appear here after review.",
     footerMessage:
       "2026 AI Symposium · Wellington-Dufferin-Guelph Public Health",
   },
