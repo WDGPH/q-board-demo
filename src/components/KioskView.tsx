@@ -12,8 +12,8 @@ import {
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { sessionHasEnded } from "../lib/sessions";
-import { sessionTime } from "./SessionSelector";
-import { uiText } from "../lib/event";
+import { ALL_SESSIONS_ID, sessionTime } from "./SessionSelector";
+import { configuredEvent, uiText } from "../lib/event";
 import type { Event, Question } from "../types";
 
 export function KioskView({
@@ -38,7 +38,9 @@ export function KioskView({
   const onExitRef = useRef(onExit);
   const [page, setPage] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [allSessions, setAllSessions] = useState(false);
+  const [allSessions, setAllSessions] = useState(
+    selectedSessionId === ALL_SESSIONS_ID,
+  );
   const [fullscreenError, setFullscreenError] = useState("");
   const [now, setNow] = useState(Date.now);
   const sessions = event.sessions ?? [];
@@ -65,7 +67,9 @@ export function KioskView({
   const question = publicQuestions[index];
   const questionSession = sessions.find((s) => s.id === question?.session_id);
   const participationUrl = new URL(
-    `/e/${encodeURIComponent(event.slug)}`,
+    event.slug === configuredEvent.slug
+      ? "/"
+      : `/e/${encodeURIComponent(event.slug)}`,
     window.location.origin,
   );
   if (selected) participationUrl.searchParams.set("session", selected.id);

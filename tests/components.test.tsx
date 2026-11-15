@@ -7,6 +7,7 @@ import { StatusBadge, VoteButton } from "../src/components/QuestionCard";
 import { ModeratorCard } from "../src/components/ModeratorCard";
 import { initialDemo } from "../src/lib/demo";
 import { makeCsv } from "../src/lib/csv";
+import { findSimilarQuestions } from "../src/lib/similarity";
 describe("question submission", () => {
   it("rejects empty and whitespace-only questions", async () => {
     const submit = vi.fn();
@@ -110,11 +111,127 @@ it("keeps previous vote on failure", async () => {
   expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "false");
   expect(screen.getByRole("alert")).toHaveTextContent("Vote failed");
 });
+it("flags likely duplicate wording without including hidden or unrelated questions", () => {
+  const questions = initialDemo();
+  const pending = {
+    ...questions.find((q) => q.status === "pending")!,
+    id: "similar-pending",
+    question_text: "How can we build public trust in AI decisions?",
+  };
+  expect(
+    findSimilarQuestions(pending, [...questions, pending]).map((q) => q.status),
+  ).toEqual(["answered"]);
+});
+it("shows possible matches as separate questions with their own vote count", () => {
+  const questions = initialDemo();
+  const pending = {
+    ...questions.find((q) => q.status === "pending")!,
+    id: "similar-pending",
+    question_text: "How can we build public trust in AI decisions?",
+  };
+  const match = questions.find((q) => q.status === "answered")!;
+  render(
+    <ModeratorCard
+      question={pending}
+      similarQuestions={[match]}
+      onUpdate={async () => 1}
+    />,
+  );
+  expect(screen.getByText("Possible matches")).toBeInTheDocument();
+  expect(
+    screen.getByText(match.question_text, { selector: "p" }),
+  ).toBeInTheDocument();
+  expect(screen.getByText("Answered · 7 votes")).toBeInTheDocument();
+});
+describe("moderator answer action", () => {
+  it.each([
+    ["pending", false],
+    ["hidden", false],
+    ["answered", false],
+    ["approved", true],
+    ["shortlisted", true],
+  ] as const)("shows the answer action for %s: %s", (status, visible) => {
+    render(
+      <ModeratorCard
+        question={{ ...initialDemo()[0], status }}
+        similarQuestions={[]}
+        onUpdate={vi.fn()}
+      />,
+    );
+    const button = screen.queryByRole("button", { name: "Mark answered" });
+    if (visible) {
+      expect(button).toBeEnabled();
+    } else {
+      expect(button).not.toBeInTheDocument();
+    }
+  });
+
+  it.each(["approved", "shortlisted"] as const)(
+    "marks a %s question answered with its loaded revision",
+    async (status) => {
+      const question = { ...initialDemo()[0], status, revision: 7 };
+      const onUpdate = vi.fn().mockResolvedValue(8);
+      render(
+        <ModeratorCard
+          question={question}
+          similarQuestions={[]}
+          onUpdate={onUpdate}
+        />,
+      );
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Mark answered" }),
+      );
+
+      expect(onUpdate).toHaveBeenCalledExactlyOnceWith(
+        question.id,
+        "answered",
+        question.moderator_note || "",
+        7,
+      );
+    },
+  );
+
+  it.each(["hidden", "pending"] as const)(
+    "removes the answer action when a public question becomes %s",
+    (status) => {
+      const question = { ...initialDemo()[0], status: "approved" as const };
+      const onUpdate = vi.fn();
+      const { rerender } = render(
+        <ModeratorCard
+          question={question}
+          similarQuestions={[]}
+          onUpdate={onUpdate}
+        />,
+      );
+      expect(
+        screen.getByRole("button", { name: "Mark answered" }),
+      ).toBeEnabled();
+
+      rerender(
+        <ModeratorCard
+          question={{ ...question, status, revision: question.revision + 1 }}
+          similarQuestions={[]}
+          onUpdate={onUpdate}
+        />,
+      );
+
+      expect(
+        screen.queryByRole("button", { name: "Mark answered" }),
+      ).not.toBeInTheDocument();
+      expect(onUpdate).not.toHaveBeenCalled();
+    },
+  );
+});
 it("blocks a stale moderator draft until the latest note is reloaded", async () => {
   const question = initialDemo()[0];
   const onUpdate = vi.fn().mockResolvedValue(3);
   const { rerender } = render(
-    <ModeratorCard question={question} onUpdate={onUpdate} />,
+    <ModeratorCard
+      question={question}
+      similarQuestions={[]}
+      onUpdate={onUpdate}
+    />,
   );
   const note = screen.getByRole("textbox");
   await userEvent.clear(note);
@@ -126,6 +243,7 @@ it("blocks a stale moderator draft until the latest note is reloaded", async () 
         revision: 2,
         moderator_note: "Note saved by another moderator",
       }}
+      similarQuestions={[]}
       onUpdate={onUpdate}
     />,
   );

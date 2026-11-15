@@ -4,6 +4,8 @@ import type { EventSession } from "../types";
 import { uiText } from "../lib/event";
 import { sessionHasEnded } from "../lib/sessions";
 
+export const ALL_SESSIONS_ID = "__all_sessions__";
+
 export function sessionTime(session: EventSession) {
   const start = new Date(session.starts_at);
   const end = session.ends_at ? new Date(session.ends_at) : null;
@@ -31,12 +33,14 @@ export function SessionSelector({
   selectedId,
   onChange,
   showGeneral,
+  showAll = false,
   compact = false,
 }: {
   sessions: EventSession[];
   selectedId: string | null;
   onChange: (id: string) => void;
   showGeneral: boolean;
+  showAll?: boolean;
   compact?: boolean;
 }) {
   const [now, setNow] = useState(Date.now);
@@ -47,6 +51,7 @@ export function SessionSelector({
     return () => window.clearInterval(timer);
   }, []);
   const selected = sessions.find((s) => s.id === selectedId);
+  const selectedAll = selectedId === ALL_SESSIONS_ID;
   const selectedHasEnded = selected && sessionHasEnded(selected, now);
   const selector = (
     <select
@@ -58,6 +63,7 @@ export function SessionSelector({
         setDetailsOpen(false);
       }}
     >
+      {showAll && <option value={ALL_SESSIONS_ID}>{uiText.allQuestions}</option>}
       {sessions.map((session) => (
         <option
           key={session.id}
@@ -76,14 +82,22 @@ export function SessionSelector({
   );
   const details = (
     <>
-      <h2>{selected?.title ?? uiText.generalQuestions}</h2>
+      <h2>
+        {selectedAll
+          ? uiText.allQuestions
+          : (selected?.title ?? uiText.generalQuestions)}
+      </h2>
       {selected && (
         <p className="session-time">
           <CalendarDays size={15} aria-hidden="true" />
           <time dateTime={selected.starts_at}>{sessionTime(selected)}</time>
         </p>
       )}
-      <p>{selected?.description ?? uiText.generalQuestionsDescription}</p>
+      <p>
+        {selectedAll
+          ? uiText.allQuestionsDescription
+          : (selected?.description ?? uiText.generalQuestionsDescription)}
+      </p>
     </>
   );
   if (compact) {

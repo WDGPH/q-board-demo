@@ -750,6 +750,9 @@ main {
   border-radius: 50%;
   background: var(--accent);
 }
+.event-name {
+  min-width: 0;
+}
 .event-date {
   border-left: 1px solid var(--line);
   padding-left: 17px;
@@ -1362,6 +1365,53 @@ textarea::placeholder {
   margin: 18px 0;
   overflow-wrap: anywhere;
 }
+.possible-matches {
+  margin: -4px 0 20px;
+  padding: 14px 16px;
+  border-left: 3px solid var(--accent);
+  background: var(--surface-muted);
+  border-radius: 0 7px 7px 0;
+}
+.possible-matches-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 5px 10px;
+  margin-bottom: 10px;
+}
+.possible-matches-heading strong {
+  font-size: 12px;
+  color: var(--ink);
+}
+.possible-matches-heading > span,
+.possible-matches li > span {
+  font-size: 11px;
+  color: var(--muted);
+}
+.possible-matches ul {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.possible-matches li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 3px 12px;
+}
+.possible-matches li p {
+  flex: 1 1 300px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.possible-matches li > span {
+  white-space: nowrap;
+}
 .moderator-card label {
   font-size: 11px;
   color: var(--muted);
@@ -1475,17 +1525,23 @@ textarea::placeholder {
     margin-bottom: 25px;
   }
   .event-detail {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 6px;
     font-size: 11px;
     margin-bottom: 18px;
   }
+  .event-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .event-date {
     border: 0;
     padding: 0;
-    margin: 2px 0 0 12px;
-    flex-basis: 100%;
+    margin: 0;
+    flex: 0 0 auto;
     font-size: 10px;
+    white-space: nowrap;
   }
   .hero-row {
     align-items: flex-start;
@@ -1507,9 +1563,23 @@ textarea::placeholder {
     display: flex;
   }
   .hero-row:has(.button) .hero-aside {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    align-items: stretch;
+  }
+  .hero-row:has(.button) .moderator-account-actions {
     display: flex;
-    gap: 5px;
-    align-items: flex-end;
+    min-width: 0;
+    gap: 4px;
+  }
+  .hero-row:has(.button) .moderator-account-actions .text-link {
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: 11px;
+    line-height: 1.2;
+    text-align: center;
   }
   .hero-row:has(.button) {
     flex-direction: column;

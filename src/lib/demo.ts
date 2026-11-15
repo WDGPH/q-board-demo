@@ -70,6 +70,9 @@ export const demoText = {
   kioskExit: "Exit kiosk",
   sessionLabel: "Choose a Session",
   sessionDetails: "Session details",
+  allQuestions: "All questions",
+  allQuestionsDescription:
+    "Questions from every session, including questions not assigned to a session.",
   generalQuestions: "General questions",
   generalQuestionsDescription:
     "Questions submitted before sessions were configured.",
@@ -106,6 +109,8 @@ export const demoText = {
   backToModerator: "Back to moderator panel",
   allStatuses: "All",
   shortlist: "Shortlist",
+  possibleMatches: "Possible matches",
+  possibleMatchHint: "Similar wording, kept as separate questions",
   brandTagline: "GOOD QUESTIONS. BETTER CONVERSATIONS.",
   questionBoardLink: "Question board",
   moderatorAccess: "Moderator access",
