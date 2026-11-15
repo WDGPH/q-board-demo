@@ -1,13 +1,15 @@
-import { uiText } from "../lib/event";
+import { statusLabels, uiText } from "../lib/event";
 import { useEffect, useState } from "react";
 import { Check, EyeOff, Star } from "lucide-react";
 import { StatusBadge } from "./QuestionCard";
 import type { Question, Status } from "../types";
 export function ModeratorCard({
   question: q,
+  similarQuestions,
   onUpdate,
 }: {
   question: Question;
+  similarQuestions: Question[];
   onUpdate: (
     id: string,
     status: Status,
@@ -59,6 +61,25 @@ export function ModeratorCard({
         </span>
       </div>
       <h3>{q.question_text}</h3>
+      {similarQuestions.length > 0 && (
+        <aside className="possible-matches" aria-label={uiText.possibleMatches}>
+          <div className="possible-matches-heading">
+            <strong>{uiText.possibleMatches}</strong>
+            <span>{uiText.possibleMatchHint}</span>
+          </div>
+          <ul>
+            {similarQuestions.map((match) => (
+              <li key={match.id}>
+                <p>{match.question_text}</p>
+                <span>
+                  {statusLabels[match.status]} · {match.vote_count}{" "}
+                  {uiText.votesLabel}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </aside>
+      )}
       <label htmlFor={`note-${q.id}`}>{uiText.moderatorNoteLabel}</label>
       <textarea
         id={`note-${q.id}`}
