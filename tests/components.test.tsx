@@ -142,6 +142,7 @@ it("shows possible matches as separate questions with their own vote count", () 
     screen.getByText(match.question_text, { selector: "p" }),
   ).toBeInTheDocument();
   expect(screen.getByText("Answered · 7 votes")).toBeInTheDocument();
+});
 describe("moderator answer action", () => {
   it.each([
     ["pending", false],
