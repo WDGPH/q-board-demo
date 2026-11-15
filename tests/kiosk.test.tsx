@@ -63,7 +63,7 @@ it("mixes public questions across sessions, labels their source, and switches ba
   ).toBeInTheDocument();
   expect(
     screen.getByRole("link", { name: "Open the attendee question board" }),
-  ).toHaveAttribute("href", `${window.location.origin}/e/${demoEvent.slug}`);
+  ).toHaveAttribute("href", window.location.origin + "/");
   await user.click(screen.getByRole("button", { name: "Next question" }));
   expect(screen.getByText(samples[1].question_text)).toBeInTheDocument();
   expect(

@@ -134,7 +134,7 @@ it("shows possible matches as separate questions with their own vote count", () 
     <ModeratorCard
       question={pending}
       similarQuestions={[match]}
-      onUpdate={async () => {}}
+      onUpdate={async () => 1}
     />,
   );
   expect(screen.getByText("Possible matches")).toBeInTheDocument();
@@ -142,6 +142,7 @@ it("shows possible matches as separate questions with their own vote count", () 
     screen.getByText(match.question_text, { selector: "p" }),
   ).toBeInTheDocument();
   expect(screen.getByText("Answered · 7 votes")).toBeInTheDocument();
+});
 describe("moderator answer action", () => {
   it.each([
     ["pending", false],
@@ -153,6 +154,7 @@ describe("moderator answer action", () => {
     render(
       <ModeratorCard
         question={{ ...initialDemo()[0], status }}
+        similarQuestions={[]}
         onUpdate={vi.fn()}
       />,
     );
@@ -169,7 +171,13 @@ describe("moderator answer action", () => {
     async (status) => {
       const question = { ...initialDemo()[0], status, revision: 7 };
       const onUpdate = vi.fn().mockResolvedValue(8);
-      render(<ModeratorCard question={question} onUpdate={onUpdate} />);
+      render(
+        <ModeratorCard
+          question={question}
+          similarQuestions={[]}
+          onUpdate={onUpdate}
+        />,
+      );
 
       await userEvent.click(
         screen.getByRole("button", { name: "Mark answered" }),
@@ -190,7 +198,11 @@ describe("moderator answer action", () => {
       const question = { ...initialDemo()[0], status: "approved" as const };
       const onUpdate = vi.fn();
       const { rerender } = render(
-        <ModeratorCard question={question} onUpdate={onUpdate} />,
+        <ModeratorCard
+          question={question}
+          similarQuestions={[]}
+          onUpdate={onUpdate}
+        />,
       );
       expect(
         screen.getByRole("button", { name: "Mark answered" }),
@@ -199,6 +211,7 @@ describe("moderator answer action", () => {
       rerender(
         <ModeratorCard
           question={{ ...question, status, revision: question.revision + 1 }}
+          similarQuestions={[]}
           onUpdate={onUpdate}
         />,
       );
@@ -214,7 +227,11 @@ it("blocks a stale moderator draft until the latest note is reloaded", async () 
   const question = initialDemo()[0];
   const onUpdate = vi.fn().mockResolvedValue(3);
   const { rerender } = render(
-    <ModeratorCard question={question} onUpdate={onUpdate} />,
+    <ModeratorCard
+      question={question}
+      similarQuestions={[]}
+      onUpdate={onUpdate}
+    />,
   );
   const note = screen.getByRole("textbox");
   await userEvent.clear(note);
@@ -226,6 +243,7 @@ it("blocks a stale moderator draft until the latest note is reloaded", async () 
         revision: 2,
         moderator_note: "Note saved by another moderator",
       }}
+      similarQuestions={[]}
       onUpdate={onUpdate}
     />,
   );
