@@ -3,6 +3,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { KioskView } from "../src/components/KioskView";
 import { demoEvent, initialDemo } from "../src/lib/demo";
+import { configuredEvent, uiText } from "../src/lib/event";
 import { useState } from "react";
 
 afterEach(() => vi.useRealTimers());
@@ -34,7 +35,7 @@ it("mixes public questions across sessions, labels their source, and switches ba
     const [selected, setSelected] = useState<string | null>("all");
     return (
       <KioskView
-        event={{ ...demoEvent, sessions }}
+        event={{ ...demoEvent, slug: configuredEvent.slug, sessions }}
         questions={questions}
         selectedSessionId={selected}
         onSessionChange={(id) => setSelected(id || null)}
@@ -52,10 +53,10 @@ it("mixes public questions across sessions, labels their source, and switches ba
   ).toBeInTheDocument();
   await user.selectOptions(
     selector,
-    screen.getByRole("option", { name: "All sessions" }),
+    screen.getByRole("option", { name: uiText.kioskAllSessions }),
   );
   expect(
-    screen.getByRole("heading", { name: "All sessions" }),
+    screen.getByRole("heading", { name: uiText.kioskAllSessions }),
   ).toBeInTheDocument();
   expect(screen.getByText("03 questions on the board")).toBeInTheDocument();
   expect(
