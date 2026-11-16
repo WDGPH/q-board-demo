@@ -2,7 +2,7 @@ import type { Event, Question } from "../types";
 export const demoEvent: Event = {
   id: "demo",
   name: "Public Health AI Symposium",
-  slug: "public-health-ai-symposium",
+  slug: "dev-event",
   description:
     "Bringing public health and artificial intelligence into conversation.",
   starts_at: "2026-11-20T09:00:00Z",
@@ -70,6 +70,9 @@ export const demoText = {
   kioskExit: "Exit kiosk",
   sessionLabel: "Choose a Session",
   sessionDetails: "Session details",
+  allQuestions: "All questions",
+  allQuestionsDescription:
+    "Questions from every session, including questions not assigned to a session.",
   generalQuestions: "General questions",
   generalQuestionsDescription:
     "Questions submitted before sessions were configured.",
@@ -106,6 +109,8 @@ export const demoText = {
   backToModerator: "Back to moderator panel",
   allStatuses: "All",
   shortlist: "Shortlist",
+  possibleMatches: "Possible matches",
+  possibleMatchHint: "Similar wording, kept as separate questions",
   brandTagline: "GOOD QUESTIONS. BETTER CONVERSATIONS.",
   questionBoardLink: "Question board",
   moderatorAccess: "Moderator access",

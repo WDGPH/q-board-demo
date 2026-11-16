@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { test, expect } from "@playwright/test";
+import { demoEvent } from "../../src/lib/demo";
 
 test("kiosk is launched by moderators and updates without a reload", async ({
   page,
@@ -227,7 +228,7 @@ test("attendee submission, moderation, voting, notes, export, and persistence", 
 test("event links resolve and unknown pages have recovery links", async ({
   page,
 }) => {
-  await page.goto("/e/public-health-ai-symposium");
+  await page.goto(`/e/${demoEvent.slug}`);
   await expect(page.getByRole("heading", { name: /Big ideas/ })).toBeVisible();
   await page.goto("/missing");
   await expect(
