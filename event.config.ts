@@ -68,6 +68,7 @@ const eventConfig: EventConfig = {
     kioskAllSessions: "Questions from the room",
     footerMessage:
       "2026 AI Symposium · Wellington-Dufferin-Guelph Public Health",
+    boardIntro: "Questions received from across the room",
   },
 };
 
