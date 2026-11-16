@@ -4,6 +4,7 @@ name: Run Tests on PR
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main]
 
 permissions:
   contents: read
@@ -11,6 +12,7 @@ permissions:
 jobs:
   test:
     name: npm test
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -32,6 +34,7 @@ jobs:
 
   build:
     name: Production Build
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
