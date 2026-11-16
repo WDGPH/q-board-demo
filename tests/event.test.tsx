@@ -48,6 +48,12 @@ beforeEach(() => {
 });
 
 describe("event configuration", () => {
+  it("uses a separate development slug unless the deployment config overrides it", () => {
+    expect(demoEvent.slug).toBe("dev-event");
+    expect(resolveEvent({}).slug).toBe("dev-event");
+    expect(resolveEvent({ slug: "conference" }).slug).toBe("conference");
+  });
+
   it("falls back to demo values for omitted and undefined fields", () => {
     expect(resolveEvent({})).toEqual(demoEvent);
     expect(resolveEvent({ name: "New event", slug: undefined })).toEqual({
